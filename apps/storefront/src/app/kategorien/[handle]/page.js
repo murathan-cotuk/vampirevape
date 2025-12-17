@@ -8,31 +8,47 @@ import Footer from '@/components/footer/Footer';
 
 export async function generateMetadata({ params }) {
   const { handle } = params;
-  // TODO: Fetch collection data for metadata
+  // Best-effort metadata
+  try {
+    const data = await getCollectionByHandle(handle);
+    const c = data?.collection;
+    if (c) {
+      return {
+        title: `${c.title} – Vampire Vape`,
+        description: c.description || 'Kategoriebeschreibung',
+      };
+    }
+  } catch (_) {}
   return {
     title: `Kategorie - Vampire Vape`,
     description: 'Kategoriebeschreibung',
   };
 }
 
-export default function CategoryPage({ params }) {
+export default async function CategoryPage({ params }) {
   const { handle } = params;
-  // TODO: Determine template based on collection metafields
-  const template = 'grid'; // grid, masonry, filter-left, filter-top
+  let collection = null;
+  try {
+    const data = await getCollectionByHandle(handle);
+    collection = data?.collection || null;
+  } catch (_) {}
 
-  const templates = {
-    grid: CategoryTemplateGrid,
-    masonry: CategoryTemplateMasonry,
-    'filter-left': CategoryTemplateFilterLeft,
-    'filter-top': CategoryTemplateFilterTop,
-  };
-
-  const CategoryTemplate = templates[template] || CategoryTemplateGrid;
+  // For now: always render Grid template with real data.
+  // (Other templates can be wired once filters/sorting are implemented server-side.)
 
   return (
     <>
       <Header />
-      <CategoryTemplate collectionHandle={handle} />
+      {collection ? (
+        <CategoryTemplateGrid collection={collection} />
+      ) : (
+        <div className="container-custom py-12">
+          <h1 className="text-4xl font-bold mb-4">Kategorie nicht gefunden</h1>
+          <p className="text-gray-600">
+            Bitte prüfen Sie den Collection-Handle: <code className="font-mono">{handle}</code>
+          </p>
+        </div>
+      )}
       <Footer />
     </>
   );
