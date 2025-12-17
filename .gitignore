@@ -41,6 +41,16 @@ yarn-error.log*
 *.swp
 *.swo
 
+# Cursor / MCP
+.cursor/
+**/.cursor/
+.mcp.json
+**/.mcp.json
+**/.gemini/
+
+# Legacy / template apps not deployed
+vampire-vape-headless/
+
 # Data (generated)
 scripts/data/
 **/scripts/data/
