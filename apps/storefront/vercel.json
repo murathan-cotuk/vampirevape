@@ -1,7 +1,0 @@
-{
-  "version": 2,
-  "deprecated": true,
-  "note": "Using repo root vercel.json with @vercel/next build for apps/storefront."
-}
-
-
