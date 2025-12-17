@@ -1,0 +1,34 @@
+{
+  "name": "@vampirevape/storefront",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "vercel-build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "next": "^14.2.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "@shopify/hydrogen-react": "^2024.4.0",
+    "@shopify/storefront-api-client": "^1.0.0",
+    "framer-motion": "^11.0.0",
+    "gsap": "^3.12.5",
+    "tailwindcss": "^3.4.1",
+    "autoprefixer": "^10.4.19",
+    "postcss": "^8.4.38",
+    "axios": "^1.6.7",
+    "react-hook-form": "^7.51.0",
+    "zod": "^3.22.4",
+    "@sentry/nextjs": "^7.100.0",
+    "react-hot-toast": "^2.4.1"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "eslint-config-next": "^14.2.0"
+  }
+}
+

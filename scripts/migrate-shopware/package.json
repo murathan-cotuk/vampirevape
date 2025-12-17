@@ -1,0 +1,21 @@
+{
+  "name": "@vampirevape/migrate-shopware",
+  "version": "1.0.0",
+  "description": "Shopware6 to Shopify Plus migration scripts",
+  "main": "exportShopware.js",
+  "scripts": {
+    "export": "node exportShopware.js",
+    "transform": "node transformToShopify.js",
+    "upload-images": "node uploadImages.js",
+    "import": "node importShopifyBulk.js",
+    "redirects": "node redirectCsvGenerator.js",
+    "migrate": "npm run export && npm run transform && npm run upload-images && npm run import && npm run redirects",
+    "test": "node test-connection.js"
+  },
+  "dependencies": {
+    "axios": "^1.6.7",
+    "form-data": "^4.0.0",
+    "dotenv": "^16.4.5"
+  }
+}
+

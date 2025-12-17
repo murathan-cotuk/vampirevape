@@ -41,10 +41,12 @@ yarn-error.log*
 *.swp
 *.swo
 
-# Data
+# Data (generated)
 scripts/data/
+**/scripts/data/
 *.csv
-*.json
+# Keep *.json tracked (package.json, config files, etc.). If you need to ignore exports, scope it:
+# scripts/data/**/*.json
 
 # Strapi
 apps/strapi/.tmp/
