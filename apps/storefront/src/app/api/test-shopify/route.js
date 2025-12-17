@@ -5,6 +5,8 @@
 
 import { shopifyFetch } from '@/utils/shopify';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const query = `
