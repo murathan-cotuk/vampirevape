@@ -1,9 +1,7 @@
 {
   "version": 2,
-  "framework": "nextjs",
-  "installCommand": "npm install",
-  "buildCommand": "npm run vercel-build",
-  "outputDirectory": ""
+  "deprecated": true,
+  "note": "Using repo root vercel.json with @vercel/next build for apps/storefront."
 }
 
 

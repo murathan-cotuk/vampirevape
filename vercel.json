@@ -1,15 +1,17 @@
 {
   "version": 2,
-  "installCommand": "npm install",
-  "buildCommand": "npm run vercel-build",
-  "outputDirectory": "",
-  "framework": "nextjs",
-  "git": {
-    "deploymentEnabled": {
-      "main": true,
-      "dev": true
+  "builds": [
+    {
+      "src": "apps/storefront/package.json",
+      "use": "@vercel/next"
     }
-  }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "apps/storefront/$1"
+    }
+  ]
 }
 
 
