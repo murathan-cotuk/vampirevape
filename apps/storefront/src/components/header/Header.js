@@ -5,24 +5,34 @@ import AnnouncementBar from './AnnouncementBar';
 import TopBar from './TopBar';
 import LogoSearchCart from './LogoSearchCart';
 import Navbar from './Navbar';
-import { getCollections } from '@/utils/shopify';
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
-  const [collections, setCollections] = useState([]);
+  const [menu, setMenu] = useState(null);
 
   useEffect(() => {
-    // Fetch collections from Shopify to build dynamic menu
-    // Note: Shopify Admin API doesn't provide direct access to Content > Menus
-    // So we use collections to build the menu dynamically
-    getCollections({ limit: 50 })
+    // Fetch menu from Shopify via API route (Storefront API)
+    // Try main-menu-1 first (Shopify default), fallback to main-menu
+    fetch('/api/shopify-menu?handle=main-menu-1')
+      .then((res) => res.json())
       .then((data) => {
-        const collectionsList = data?.collections?.edges?.map((e) => e.node) || [];
-        setCollections(collectionsList);
+        if (data.menu) {
+          setMenu(data.menu);
+        } else {
+          // Fallback to main-menu if main-menu-1 doesn't exist
+          fetch('/api/shopify-menu?handle=main-menu')
+            .then((res) => res.json())
+            .then((fallbackData) => {
+              setMenu(fallbackData.menu);
+            })
+            .catch((err) => {
+              console.error('Failed to fetch fallback menu:', err);
+            });
+        }
       })
       .catch((err) => {
-        console.error('Failed to fetch collections:', err);
+        console.error('Failed to fetch menu:', err);
       });
   }, []);
 
@@ -37,7 +47,7 @@ export default function Header() {
       <Navbar 
         isMenuOpen={isMenuOpen}
         setIsMenuOpen={setIsMenuOpen}
-        collections={collections}
+        menu={menu}
       />
     </header>
   );

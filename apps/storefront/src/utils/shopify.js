@@ -219,95 +219,54 @@ export async function getCollectionByHandle(handle) {
 }
 
 /**
- * Fetch menu from Shopify Admin API using GraphQL
- * Note: Storefront API doesn't support menus, so we use Admin API GraphQL
+ * Fetch menu from Shopify Storefront API
  * Content > Menus altından oluşturulan menüleri çeker
+ * Storefront API'de menu query'si mevcut!
  */
 export async function getShopifyMenu(menuHandle = 'main-menu-1') {
-  const ADMIN_API_TOKEN = process.env.SHOPIFY_ADMIN_API_TOKEN;
-  const SHOPIFY_STORE = process.env.SHOPIFY_STORE || SHOPIFY_STORE_DOMAIN;
-  const ADMIN_API_VERSION = '2024-10';
-
-  if (!ADMIN_API_TOKEN) {
-    console.warn('SHOPIFY_ADMIN_API_TOKEN not set, menu will be empty');
-    return { menu: null };
-  }
-
-  try {
-    // Use GraphQL Admin API to fetch navigation menus
-    const graphqlQuery = `
-      query getNavigationMenus {
-        navigationMenus(first: 50) {
-          edges {
-            node {
+  const query = `
+    query getMenu($handle: String!) {
+      menu(handle: $handle) {
+        id
+        title
+        items {
+          id
+          title
+          url
+          type
+          items {
+            id
+            title
+            url
+            type
+            items {
               id
               title
-              handle
-              items {
-                id
-                title
-                url
-                type
-                items {
-                  id
-                  title
-                  url
-                  type
-                  items {
-                    id
-                    title
-                    url
-                    type
-                  }
-                }
-              }
+              url
+              type
             }
           }
         }
       }
-    `;
-
-    const response = await fetch(
-      `https://${SHOPIFY_STORE}/admin/api/${ADMIN_API_VERSION}/graphql.json`,
-      {
-        method: 'POST',
-        headers: {
-          'X-Shopify-Access-Token': ADMIN_API_TOKEN,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ query: graphqlQuery }),
-        cache: 'no-store',
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error(`GraphQL Admin API error: ${response.statusText}`);
     }
+  `;
 
-    const data = await response.json();
+  try {
+    // Try main-menu-1 first, then fallback to main-menu
+    let data = await shopifyFetch({ 
+      query, 
+      variables: { handle: menuHandle } 
+    });
 
-    if (data.errors) {
-      console.error('GraphQL errors:', data.errors);
-      throw new Error(`GraphQL errors: ${JSON.stringify(data.errors)}`);
-    }
+    let menu = data?.menu;
 
-    const navigationMenus = data.data?.navigationMenus?.edges || [];
-    
-    // Find menu by handle (try main-menu-1, main-menu, or use first menu)
-    let menu = navigationMenus.find(
-      (edge) => edge.node.handle === menuHandle
-    )?.node;
-
+    // If main-menu-1 doesn't exist, try main-menu
     if (!menu && menuHandle === 'main-menu-1') {
-      // Fallback to main-menu
-      menu = navigationMenus.find(
-        (edge) => edge.node.handle === 'main-menu'
-      )?.node;
-    }
-
-    if (!menu && navigationMenus.length > 0) {
-      // Use first menu as fallback
-      menu = navigationMenus[0].node;
+      data = await shopifyFetch({ 
+        query, 
+        variables: { handle: 'main-menu' } 
+      });
+      menu = data?.menu;
     }
 
     if (!menu) {
@@ -323,7 +282,7 @@ export async function getShopifyMenu(menuHandle = 'main-menu-1') {
         title: item.title,
         url: item.url,
         type: item.type,
-        items: processMenuItems(item.items),
+        items: processMenuItems(item.items || []),
       }));
     };
 
@@ -331,7 +290,7 @@ export async function getShopifyMenu(menuHandle = 'main-menu-1') {
       menu: {
         id: menu.id,
         title: menu.title,
-        handle: menu.handle,
+        handle: menuHandle,
         items: processMenuItems(menu.items || []),
       },
     };

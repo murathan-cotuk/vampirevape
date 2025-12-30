@@ -1,7 +1,8 @@
 import { getShopifyMenu } from '@/utils/shopify';
 
 /**
- * API route to fetch Shopify menu (Admin API requires server-side)
+ * API route to fetch Shopify menu from Storefront API
+ * Content > Menus altından oluşturulan menüleri çeker
  */
 export async function GET(request) {
   try {
