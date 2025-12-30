@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import { usePathname } from 'next/navigation';
 
 /**
  * Map Shopify URL to Next.js route
@@ -23,10 +24,10 @@ function mapShopifyUrl(url) {
     path = cleanUrl;
   }
   
-  // Collection URL: /collections/[handle] → /kategorien/[handle]
+  // Collection URL: /collections/[handle] → /[handle]
   if (path.startsWith('/collections/')) {
     const handle = path.replace('/collections/', '').split('/')[0]; // Get first part after /collections/
-    return `/kategorien/${handle}`;
+    return `/${handle}`;
   }
   
   // Product URL: /products/[handle] → /produkte/[handle]
@@ -74,9 +75,16 @@ function mapShopifyUrl(url) {
 
 export default function Navbar({ isMenuOpen, setIsMenuOpen, menu }) {
   const [activeDropdown, setActiveDropdown] = useState(null);
+  const pathname = usePathname();
 
   // If no menu from Shopify, show empty state or fallback
   const menuItems = menu?.items || [];
+
+  // Check if a menu item is active (current path matches the menu URL)
+  const isActive = (url) => {
+    const mappedUrl = mapShopifyUrl(url);
+    return pathname === mappedUrl || pathname.startsWith(mappedUrl + '/');
+  };
 
   return (
     <nav className="bg-primary text-white">
@@ -94,7 +102,7 @@ export default function Navbar({ isMenuOpen, setIsMenuOpen, menu }) {
 
           {/* Desktop Menu */}
           {menuItems.length > 0 ? (
-            <ul className="hidden lg:flex items-center gap-1">
+            <ul className="hidden lg:flex items-center gap-0 justify-center w-full">
               {menuItems.map((item) => (
                 <li
                   key={item.id}
@@ -104,9 +112,16 @@ export default function Navbar({ isMenuOpen, setIsMenuOpen, menu }) {
                 >
                   <Link
                     href={mapShopifyUrl(item.url)}
-                    className="block px-4 py-4 hover:bg-primary-dark transition-colors font-medium"
+                    className={`inline-block px-3 py-4 font-bold text-base relative transition-all duration-200 ${
+                      isActive(item.url)
+                        ? 'text-[#ffd300] text-[1.2em]'
+                        : 'group-hover:text-[#ffd300] group-hover:scale-110'
+                    }`}
                   >
                     {item.title}
+                    <span className={`absolute bottom-3 left-3 right-3 h-0.5 bg-[#ffd300] transition-all duration-200 ${
+                      isActive(item.url) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                    }`}></span>
                   </Link>
                   {item.items && item.items.length > 0 && (
                     <div
