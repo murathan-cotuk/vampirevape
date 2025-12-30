@@ -5,37 +5,71 @@ import { useState } from 'react';
 
 /**
  * Map Shopify URL to Next.js route
+ * Handles both relative (/collections/...) and full URLs (https://...myshopify.com/collections/...)
  */
 function mapShopifyUrl(url) {
   if (!url) return '#';
   
+  // Remove query parameters and hash
+  const cleanUrl = url.split('?')[0].split('#')[0];
+  
+  // Extract path from full URL if needed
+  let path = cleanUrl;
+  try {
+    const urlObj = new URL(cleanUrl);
+    path = urlObj.pathname;
+  } catch {
+    // If it's not a full URL, use as is
+    path = cleanUrl;
+  }
+  
   // Collection URL: /collections/[handle] → /kategorien/[handle]
-  if (url.startsWith('/collections/')) {
-    const handle = url.replace('/collections/', '');
+  if (path.startsWith('/collections/')) {
+    const handle = path.replace('/collections/', '').split('/')[0]; // Get first part after /collections/
     return `/kategorien/${handle}`;
   }
   
   // Product URL: /products/[handle] → /produkte/[handle]
-  if (url.startsWith('/products/')) {
-    const handle = url.replace('/products/', '');
+  if (path.startsWith('/products/')) {
+    const handle = path.replace('/products/', '').split('/')[0];
     return `/produkte/${handle}`;
   }
   
   // Page URL: /pages/[handle] → /[handle]
-  if (url.startsWith('/pages/')) {
-    const handle = url.replace('/pages/', '');
+  if (path.startsWith('/pages/')) {
+    const handle = path.replace('/pages/', '').split('/')[0];
     return `/${handle}`;
   }
   
   // Blog URL: /blogs/[handle] → /blog/[handle]
-  if (url.startsWith('/blogs/')) {
-    const parts = url.split('/');
+  if (path.startsWith('/blogs/')) {
+    const parts = path.split('/');
     const slug = parts[parts.length - 1];
     return `/blog/${slug}`;
   }
   
-  // Custom link or external URL
-  return url;
+  // Root URL
+  if (path === '/' || path === '') {
+    return '/';
+  }
+  
+  // Custom link or external URL - return as is if it's external
+  if (cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://')) {
+    // External URL - check if it's our Shopify store
+    if (cleanUrl.includes('myshopify.com')) {
+      // It's a Shopify URL, try to extract the path
+      try {
+        const urlObj = new URL(cleanUrl);
+        return mapShopifyUrl(urlObj.pathname); // Recursively process the pathname
+      } catch {
+        return url; // Return original if parsing fails
+      }
+    }
+    return url; // External URL, return as is
+  }
+  
+  // Relative URL that doesn't match patterns - return as is
+  return path;
 }
 
 export default function Navbar({ isMenuOpen, setIsMenuOpen, menu }) {
