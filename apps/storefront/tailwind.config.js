@@ -18,6 +18,9 @@ module.exports = {
           light: '#617282',
           dark: '#4b5864',
         },
+        accent: {
+          DEFAULT: '#ffd300',
+        },
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],

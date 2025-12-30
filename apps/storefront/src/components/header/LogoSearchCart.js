@@ -14,9 +14,14 @@ export default function LogoSearchCart({ isAccountOpen, setIsAccountOpen }) {
       <div className="flex items-center justify-between gap-4">
         {/* Logo */}
         <Link href="/" className="flex-shrink-0">
-          <div className="h-12 w-48 bg-primary flex items-center justify-center text-white font-bold text-xl">
-            VAMPIRE VAPE
-          </div>
+          <Image
+            src="https://cdn.shopify.com/s/files/1/0969/5084/5726/files/Vlad_Logo_big.png?v=1767097230"
+            alt="Vampire Vape Logo"
+            width={120}
+            height={120}
+            className=""
+            priority
+          />
         </Link>
 
         {/* Search Bar */}

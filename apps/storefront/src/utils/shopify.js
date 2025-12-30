@@ -219,6 +219,88 @@ export async function getCollectionByHandle(handle) {
 }
 
 /**
+ * Fetch menu from Shopify Storefront API
+ * Content > Menus altından oluşturulan menüleri çeker
+ * Storefront API'de menu query'si mevcut!
+ */
+export async function getShopifyMenu(menuHandle = 'main-menu-1') {
+  const query = `
+    query getMenu($handle: String!) {
+      menu(handle: $handle) {
+        id
+        title
+        items {
+          id
+          title
+          url
+          type
+          items {
+            id
+            title
+            url
+            type
+            items {
+              id
+              title
+              url
+              type
+            }
+          }
+        }
+      }
+    }
+  `;
+
+  try {
+    // Try main-menu-1 first, then fallback to main-menu
+    let data = await shopifyFetch({ 
+      query, 
+      variables: { handle: menuHandle } 
+    });
+
+    let menu = data?.menu;
+
+    // If main-menu-1 doesn't exist, try main-menu
+    if (!menu && menuHandle === 'main-menu-1') {
+      data = await shopifyFetch({ 
+        query, 
+        variables: { handle: 'main-menu' } 
+      });
+      menu = data?.menu;
+    }
+
+    if (!menu) {
+      console.warn(`Menu with handle "${menuHandle}" not found`);
+      return { menu: null };
+    }
+
+    // Recursively process menu items
+    const processMenuItems = (items) => {
+      if (!items || items.length === 0) return [];
+      return items.map((item) => ({
+        id: item.id,
+        title: item.title,
+        url: item.url,
+        type: item.type,
+        items: processMenuItems(item.items || []),
+      }));
+    };
+
+    return {
+      menu: {
+        id: menu.id,
+        title: menu.title,
+        handle: menuHandle,
+        items: processMenuItems(menu.items || []),
+      },
+    };
+  } catch (error) {
+    console.error('Failed to fetch Shopify menu:', error);
+    return { menu: null };
+  }
+}
+
+/**
  * React hook for products (client-side)
  */
 export function useShopifyProducts(options = {}) {
