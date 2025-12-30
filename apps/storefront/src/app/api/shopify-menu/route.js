@@ -3,9 +3,13 @@ import { getShopifyMenu } from '@/utils/shopify';
 /**
  * API route to fetch Shopify menu (Admin API requires server-side)
  */
-export async function GET() {
+export async function GET(request) {
   try {
-    const { menu } = await getShopifyMenu('main-menu');
+    // Get menu handle from query param or use default
+    const { searchParams } = new URL(request.url);
+    const menuHandle = searchParams.get('handle') || 'main-menu-1'; // Default to main-menu-1
+    
+    const { menu } = await getShopifyMenu(menuHandle);
     
     return Response.json({ menu }, { status: 200 });
   } catch (error) {

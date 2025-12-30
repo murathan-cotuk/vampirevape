@@ -1,41 +1,104 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 
 /**
- * Map Shopify URL to Next.js route
+ * Build menu structure from collections
+ * Groups collections by category prefix or name patterns
  */
-function mapShopifyUrl(url) {
-  if (!url) return '#';
-  
-  // Collection URL: /collections/[handle] → /kategorien/[handle]
-  if (url.startsWith('/collections/')) {
-    const handle = url.replace('/collections/', '');
-    return `/kategorien/${handle}`;
-  }
-  
-  // Product URL: /products/[handle] → /produkte/[handle]
-  if (url.startsWith('/products/')) {
-    const handle = url.replace('/products/', '');
-    return `/produkte/${handle}`;
-  }
-  
-  // Page URL: /pages/[handle] → /[handle]
-  if (url.startsWith('/pages/')) {
-    const handle = url.replace('/pages/', '');
-    return `/${handle}`;
-  }
-  
-  // Custom link or external URL
-  return url;
+function buildMenuFromCollections(collections) {
+  const menuItems = [];
+
+  // Define menu structure with collection filters
+  const menuStructure = [
+    {
+      name: 'E-Liquids',
+      href: '/e-liquids',
+      filters: ['liquid', 'e-liquid', 'eliquid'],
+      subcategories: [],
+    },
+    {
+      name: 'Hardware',
+      href: '/hardware',
+      filters: ['hardware', 'zigarette', 'verdampfer', 'akku'],
+      subcategories: [],
+    },
+    {
+      name: 'Aromen',
+      href: '/aromen',
+      filters: ['aroma'],
+      subcategories: [],
+    },
+    {
+      name: 'Nicotine Shots',
+      href: '/nicotine-shots',
+      filters: ['nicotine', 'shot'],
+      subcategories: [],
+    },
+    {
+      name: 'Bundles',
+      href: '/bundles',
+      filters: ['bundle', 'set'],
+      subcategories: [],
+    },
+    {
+      name: 'Angebote',
+      href: '/angebote',
+      filters: ['sale', 'angebot', 'rabatt'],
+      subcategories: [],
+    },
+    {
+      name: 'Marken',
+      href: '/marken',
+      filters: [],
+      subcategories: [],
+    },
+    {
+      name: 'Lexikon',
+      href: '/lexikon',
+      filters: [],
+      subcategories: [],
+    },
+    {
+      name: 'Blog',
+      href: '/blog',
+      filters: [],
+      subcategories: [],
+    },
+  ];
+
+  // Map collections to menu items
+  menuStructure.forEach((menuItem) => {
+    if (menuItem.filters.length > 0 && collections.length > 0) {
+      const matchingCollections = collections.filter((col) =>
+        menuItem.filters.some((filter) =>
+          col.title?.toLowerCase().includes(filter.toLowerCase()) ||
+          col.handle?.toLowerCase().includes(filter.toLowerCase())
+        )
+      );
+
+      menuItem.subcategories = matchingCollections.map((col) => ({
+        id: col.id,
+        title: col.title,
+        url: `/kategorien/${col.handle}`,
+        type: 'collection',
+      }));
+    }
+
+    menuItems.push(menuItem);
+  });
+
+  return menuItems;
 }
 
-export default function Navbar({ isMenuOpen, setIsMenuOpen, menu }) {
+export default function Navbar({ isMenuOpen, setIsMenuOpen, collections = [] }) {
   const [activeDropdown, setActiveDropdown] = useState(null);
 
-  // If no menu from Shopify, show empty state or fallback
-  const menuItems = menu?.items || [];
+  // Build menu from collections
+  const menuItems = useMemo(() => {
+    return buildMenuFromCollections(collections);
+  }, [collections]);
 
   return (
     <nav className="bg-primary text-white">
@@ -56,27 +119,27 @@ export default function Navbar({ isMenuOpen, setIsMenuOpen, menu }) {
             <ul className="hidden lg:flex items-center gap-1">
               {menuItems.map((item) => (
                 <li
-                  key={item.id}
+                  key={item.name}
                   className="relative group"
-                  onMouseEnter={() => setActiveDropdown(item.id)}
+                  onMouseEnter={() => setActiveDropdown(item.name)}
                   onMouseLeave={() => setActiveDropdown(null)}
                 >
                   <Link
-                    href={mapShopifyUrl(item.url)}
+                    href={item.href}
                     className="block px-4 py-4 hover:bg-primary-dark transition-colors font-medium"
                   >
-                    {item.title}
+                    {item.name}
                   </Link>
-                  {item.items && item.items.length > 0 && (
+                  {item.subcategories && item.subcategories.length > 0 && (
                     <div
                       className={`absolute top-full left-0 bg-white text-gray-900 shadow-lg min-w-[200px] py-2 ${
-                        activeDropdown === item.id ? 'block' : 'hidden'
+                        activeDropdown === item.name ? 'block' : 'hidden'
                       } group-hover:block`}
                     >
-                      {item.items.map((subItem) => (
+                      {item.subcategories.map((subItem) => (
                         <Link
-                          key={subItem.id}
-                          href={mapShopifyUrl(subItem.url)}
+                          key={subItem.id || subItem.title}
+                          href={subItem.url}
                           className="block px-4 py-2 hover:bg-gray-100 transition-colors"
                         >
                           {subItem.title}
@@ -89,7 +152,7 @@ export default function Navbar({ isMenuOpen, setIsMenuOpen, menu }) {
             </ul>
           ) : (
             <div className="hidden lg:flex items-center px-4 py-4 text-sm text-gray-300">
-              Menü yükleniyor...
+              Menü lädt...
             </div>
           )}
         </div>
@@ -99,20 +162,20 @@ export default function Navbar({ isMenuOpen, setIsMenuOpen, menu }) {
           <div className="lg:hidden border-t border-primary-light">
             {menuItems.length > 0 ? (
               menuItems.map((item) => (
-                <div key={item.id}>
+                <div key={item.name}>
                   <Link
-                    href={mapShopifyUrl(item.url)}
+                    href={item.href}
                     className="block px-4 py-3 hover:bg-primary-dark transition-colors"
                     onClick={() => setIsMenuOpen(false)}
                   >
-                    {item.title}
+                    {item.name}
                   </Link>
-                  {item.items && item.items.length > 0 && (
+                  {item.subcategories && item.subcategories.length > 0 && (
                     <div className="bg-primary-dark pl-8">
-                      {item.items.map((subItem) => (
+                      {item.subcategories.map((subItem) => (
                         <Link
-                          key={subItem.id}
-                          href={mapShopifyUrl(subItem.url)}
+                          key={subItem.id || subItem.title}
+                          href={subItem.url}
                           className="block px-4 py-2 hover:bg-primary transition-colors text-sm"
                           onClick={() => setIsMenuOpen(false)}
                         >
@@ -125,7 +188,7 @@ export default function Navbar({ isMenuOpen, setIsMenuOpen, menu }) {
               ))
             ) : (
               <div className="px-4 py-3 text-sm text-gray-300">
-                Menü yükleniyor...
+                Menü lädt...
               </div>
             )}
           </div>

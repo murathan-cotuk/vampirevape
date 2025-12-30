@@ -5,21 +5,22 @@ import AnnouncementBar from './AnnouncementBar';
 import TopBar from './TopBar';
 import LogoSearchCart from './LogoSearchCart';
 import Navbar from './Navbar';
+import { getCollections } from '@/utils/shopify';
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
-  const [menu, setMenu] = useState(null);
+  const [collections, setCollections] = useState([]);
 
   useEffect(() => {
-    // Fetch menu from Shopify via API route (Admin API requires server-side)
-    fetch('/api/shopify-menu')
-      .then((res) => res.json())
+    // Fetch collections from Shopify to build dynamic menu
+    getCollections({ limit: 50 })
       .then((data) => {
-        setMenu(data.menu);
+        const collectionsList = data?.collections?.edges?.map((e) => e.node) || [];
+        setCollections(collectionsList);
       })
       .catch((err) => {
-        console.error('Failed to fetch menu:', err);
+        console.error('Failed to fetch collections:', err);
       });
   }, []);
 
@@ -34,7 +35,7 @@ export default function Header() {
       <Navbar 
         isMenuOpen={isMenuOpen}
         setIsMenuOpen={setIsMenuOpen}
-        menu={menu}
+        collections={collections}
       />
     </header>
   );
