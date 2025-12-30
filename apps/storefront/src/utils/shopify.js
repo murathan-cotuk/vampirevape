@@ -219,6 +219,25 @@ export async function getCollectionByHandle(handle) {
 }
 
 /**
+ * Fetch pages from Shopify (for blog, static pages, etc.)
+ * Note: Uses Admin API as Storefront API doesn't support pages
+ */
+export async function getShopifyPages({ limit = 50 } = {}) {
+  // This requires Admin API - for now return empty
+  // TODO: Implement Admin API pages fetch if needed
+  return { pages: [] };
+}
+
+/**
+ * Fetch single page by handle
+ */
+export async function getShopifyPageByHandle(handle) {
+  // This requires Admin API - for now return null
+  // TODO: Implement Admin API page fetch if needed
+  return null;
+}
+
+/**
  * React hook for products (client-side)
  */
 export function useShopifyProducts(options = {}) {
