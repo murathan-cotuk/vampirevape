@@ -2,70 +2,114 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { getProductByHandle } from '@/utils/shopify';
 
-export default function ProductTemplateA({ productHandle }) {
-  const [product, setProduct] = useState(null);
-  const [selectedVariant, setSelectedVariant] = useState(null);
+function formatPrice(amount, currencyCode) {
+  try {
+    const value = Number(amount || 0);
+    return new Intl.NumberFormat('de-DE', {
+      style: 'currency',
+      currency: currencyCode || 'EUR',
+    }).format(value);
+  } catch {
+    return `${amount} ${currencyCode || 'EUR'}`;
+  }
+}
+
+export default function ProductTemplateA({ product }) {
+  const [selectedVariant, setSelectedVariant] = useState(
+    product?.variants?.edges?.[0]?.node || null
+  );
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
 
-  // TODO: Fetch product data
-  // useEffect(() => {
-  //   getProductByHandle(productHandle).then(setProduct);
-  // }, [productHandle]);
-
-  if (!product) {
-    return <div>Lädt...</div>;
-  }
+  const images = product?.images?.edges?.map((e) => e.node) || [];
+  const variants = product?.variants?.edges?.map((e) => e.node) || [];
+  const price = selectedVariant?.price || product?.priceRange?.minVariantPrice;
 
   return (
     <div className="container-custom py-12">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
         {/* Images */}
         <div>
-          <div className="aspect-square bg-gray-100 rounded-lg mb-4 relative overflow-hidden">
-            <div className="absolute inset-0 flex items-center justify-center text-gray-400">
-              Hauptbild
-            </div>
-          </div>
-          <div className="grid grid-cols-4 gap-2">
-            {[1, 2, 3, 4].map((img, idx) => (
-              <button
-                key={idx}
-                onClick={() => setSelectedImage(idx)}
-                className={`aspect-square bg-gray-100 rounded-lg border-2 ${
-                  selectedImage === idx ? 'border-primary' : 'border-transparent'
-                }`}
-              >
-                <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">
-                  {idx + 1}
+          {images.length > 0 ? (
+            <>
+              <div className="aspect-square bg-gray-100 rounded-lg mb-4 relative overflow-hidden">
+                <Image
+                  src={images[selectedImage]?.url}
+                  alt={images[selectedImage]?.altText || product.title}
+                  fill
+                  sizes="(max-width: 1024px) 100vw, 50vw"
+                  className="object-cover"
+                />
+              </div>
+              {images.length > 1 && (
+                <div className="grid grid-cols-4 gap-2">
+                  {images.slice(0, 4).map((img, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setSelectedImage(idx)}
+                      className={`aspect-square bg-gray-100 rounded-lg border-2 relative overflow-hidden ${
+                        selectedImage === idx ? 'border-primary' : 'border-transparent'
+                      }`}
+                    >
+                      <Image
+                        src={img.url}
+                        alt={img.altText || `${product.title} ${idx + 1}`}
+                        fill
+                        sizes="(max-width: 768px) 25vw, 12.5vw"
+                        className="object-cover"
+                      />
+                    </button>
+                  ))}
                 </div>
-              </button>
-            ))}
-          </div>
+              )}
+            </>
+          ) : (
+            <div className="aspect-square bg-gray-100 rounded-lg mb-4 relative overflow-hidden">
+              <div className="absolute inset-0 flex items-center justify-center text-gray-400">
+                Kein Bild
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Product Info */}
         <div>
-          <h1 className="text-4xl font-bold mb-4">Produktname</h1>
-          <p className="text-2xl text-primary font-bold mb-6">19,99 €</p>
+          <h1 className="text-4xl font-bold mb-4">{product.title}</h1>
+          <p className="text-2xl text-primary font-bold mb-6">
+            {formatPrice(price?.amount, price?.currencyCode)}
+          </p>
           
-          <div className="mb-6">
-            <h3 className="font-semibold mb-2">Beschreibung</h3>
-            <p className="text-gray-700">
-              Produktbeschreibung hier...
-            </p>
-          </div>
+          {product.description && (
+            <div className="mb-6">
+              <h3 className="font-semibold mb-2">Beschreibung</h3>
+              <div
+                className="text-gray-700 prose prose-sm max-w-none"
+                dangerouslySetInnerHTML={{ __html: product.descriptionHtml || product.description }}
+              />
+            </div>
+          )}
 
           {/* Variants */}
-          <div className="mb-6">
-            <label className="block font-semibold mb-2">Variante wählen</label>
-            <select className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg">
-              <option>Variante 1</option>
-              <option>Variante 2</option>
-            </select>
-          </div>
+          {variants.length > 1 && (
+            <div className="mb-6">
+              <label className="block font-semibold mb-2">Variante wählen</label>
+              <select
+                value={selectedVariant?.id || ''}
+                onChange={(e) => {
+                  const variant = variants.find((v) => v.id === e.target.value);
+                  setSelectedVariant(variant);
+                }}
+                className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg"
+              >
+                {variants.map((variant) => (
+                  <option key={variant.id} value={variant.id}>
+                    {variant.title} {variant.availableForSale ? '' : '(Nicht verfügbar)'}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Quantity */}
           <div className="mb-6">
@@ -88,8 +132,11 @@ export default function ProductTemplateA({ productHandle }) {
           </div>
 
           {/* Add to Cart */}
-          <button className="btn-primary w-full py-4 text-lg mb-4">
-            In den Warenkorb
+          <button
+            disabled={!selectedVariant?.availableForSale}
+            className="btn-primary w-full py-4 text-lg mb-4 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {selectedVariant?.availableForSale ? 'In den Warenkorb' : 'Nicht verfügbar'}
           </button>
           <button className="btn-outline w-full py-4 text-lg">
             Zu Favoriten hinzufügen
