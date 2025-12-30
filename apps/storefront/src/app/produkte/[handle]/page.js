@@ -8,17 +8,32 @@ import Footer from '@/components/footer/Footer';
 
 export async function generateMetadata({ params }) {
   const { handle } = params;
-  // TODO: Fetch product data for metadata
+  try {
+    const data = await getProductByHandle(handle);
+    const product = data?.product;
+    if (product) {
+      return {
+        title: `${product.title} – Vampire Vape`,
+        description: product.description || 'Produktbeschreibung',
+      };
+    }
+  } catch (_) {}
   return {
     title: `Produkt - Vampire Vape`,
     description: 'Produktbeschreibung',
   };
 }
 
-export default function ProductPage({ params }) {
+export default async function ProductPage({ params }) {
   const { handle } = params;
-  // TODO: Determine template based on product metafields or type
-  const template = 'A'; // A, B, C, or D
+  let product = null;
+  try {
+    const data = await getProductByHandle(handle);
+    product = data?.product || null;
+  } catch (_) {}
+
+  // For now: always use Template A. Later can be based on product metafields
+  const template = 'A';
 
   const templates = {
     A: ProductTemplateA,
@@ -32,7 +47,16 @@ export default function ProductPage({ params }) {
   return (
     <>
       <Header />
-      <ProductTemplate productHandle={handle} />
+      {product ? (
+        <ProductTemplate product={product} />
+      ) : (
+        <div className="container-custom py-12">
+          <h1 className="text-4xl font-bold mb-4">Produkt nicht gefunden</h1>
+          <p className="text-gray-600">
+            Bitte prüfen Sie den Product-Handle: <code className="font-mono">{handle}</code>
+          </p>
+        </div>
+      )}
       <Footer />
     </>
   );
