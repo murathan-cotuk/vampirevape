@@ -1,12 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 
 const categories = [
   { name: 'E-Liquids', href: '/e-liquids', subcategories: ['Alle Liquids', 'Top Liquids', 'Neue Liquids', 'Aromen'] },
   { name: 'Hardware', href: '/hardware', subcategories: ['E-Zigaretten', 'Verdampfer', 'Akkus', 'Zubehör'] },
-  { name: 'Aromen', href: '/aromen', subcategories: ['Fruchtig', 'Süß', 'Menthol', 'Tabak'] },
+  { name: 'Aromen', href: '/aromen', collectionFilter: 'aroma', subcategories: [] }, // Dynamic collections will be added
   { name: 'Nicotine Shots', href: '/nicotine-shots', subcategories: [] },
   { name: 'Bundles', href: '/bundles', subcategories: [] },
   { name: 'Angebote', href: '/angebote', subcategories: ['Sale', 'Neuheiten', 'Bestseller'] },
@@ -15,8 +15,34 @@ const categories = [
   { name: 'Blog', href: '/blog', subcategories: [] },
 ];
 
-export default function Navbar({ isMenuOpen, setIsMenuOpen }) {
+export default function Navbar({ isMenuOpen, setIsMenuOpen, collections = [] }) {
   const [activeDropdown, setActiveDropdown] = useState(null);
+
+  // Map collections to menu items
+  const menuCategories = useMemo(() => {
+    return categories.map((category) => {
+      if (category.collectionFilter && collections.length > 0) {
+        // Filter collections by name containing the filter term (case-insensitive)
+        const filteredCollections = collections.filter((col) =>
+          col.title?.toLowerCase().includes(category.collectionFilter.toLowerCase()) ||
+          col.handle?.toLowerCase().includes(category.collectionFilter.toLowerCase())
+        );
+        
+        // Convert collections to subcategories format
+        const collectionSubcategories = filteredCollections.map((col) => ({
+          name: col.title,
+          href: `/kategorien/${col.handle}`,
+          isCollection: true,
+        }));
+
+        return {
+          ...category,
+          subcategories: collectionSubcategories,
+        };
+      }
+      return category;
+    });
+  }, [collections]);
 
   return (
     <nav className="bg-primary text-white">
@@ -34,7 +60,7 @@ export default function Navbar({ isMenuOpen, setIsMenuOpen }) {
 
           {/* Desktop Menu */}
           <ul className="hidden lg:flex items-center gap-1">
-            {categories.map((category) => (
+            {menuCategories.map((category) => (
               <li
                 key={category.name}
                 className="relative group"
@@ -47,7 +73,7 @@ export default function Navbar({ isMenuOpen, setIsMenuOpen }) {
                 >
                   {category.name}
                 </Link>
-                {category.subcategories.length > 0 && (
+                {category.subcategories && category.subcategories.length > 0 && (
                   <div
                     className={`absolute top-full left-0 bg-white text-gray-900 shadow-lg min-w-[200px] py-2 ${
                       activeDropdown === category.name ? 'block' : 'hidden'
@@ -55,11 +81,11 @@ export default function Navbar({ isMenuOpen, setIsMenuOpen }) {
                   >
                     {category.subcategories.map((sub) => (
                       <Link
-                        key={sub}
-                        href={`${category.href}/${sub.toLowerCase().replace(/\s+/g, '-')}`}
+                        key={sub.name || sub}
+                        href={typeof sub === 'object' && sub.href ? sub.href : `${category.href}/${(sub.name || sub).toLowerCase().replace(/\s+/g, '-')}`}
                         className="block px-4 py-2 hover:bg-gray-100 transition-colors"
                       >
-                        {sub}
+                        {typeof sub === 'object' ? sub.name : sub}
                       </Link>
                     ))}
                   </div>
@@ -72,7 +98,7 @@ export default function Navbar({ isMenuOpen, setIsMenuOpen }) {
         {/* Mobile Menu */}
         {isMenuOpen && (
           <div className="lg:hidden border-t border-primary-light">
-            {categories.map((category) => (
+            {menuCategories.map((category) => (
               <div key={category.name}>
                 <Link
                   href={category.href}
@@ -81,16 +107,16 @@ export default function Navbar({ isMenuOpen, setIsMenuOpen }) {
                 >
                   {category.name}
                 </Link>
-                {category.subcategories.length > 0 && (
+                {category.subcategories && category.subcategories.length > 0 && (
                   <div className="bg-primary-dark pl-8">
                     {category.subcategories.map((sub) => (
                       <Link
-                        key={sub}
-                        href={`${category.href}/${sub.toLowerCase().replace(/\s+/g, '-')}`}
+                        key={typeof sub === 'object' ? sub.name || sub.href : sub}
+                        href={typeof sub === 'object' && sub.href ? sub.href : `${category.href}/${(sub.name || sub).toLowerCase().replace(/\s+/g, '-')}`}
                         className="block px-4 py-2 hover:bg-primary transition-colors text-sm"
                         onClick={() => setIsMenuOpen(false)}
                       >
-                        {sub}
+                        {typeof sub === 'object' ? sub.name : sub}
                       </Link>
                     ))}
                   </div>
