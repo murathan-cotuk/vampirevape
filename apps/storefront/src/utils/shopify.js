@@ -219,22 +219,136 @@ export async function getCollectionByHandle(handle) {
 }
 
 /**
- * Fetch pages from Shopify (for blog, static pages, etc.)
- * Note: Uses Admin API as Storefront API doesn't support pages
+ * Fetch menu from Shopify Admin API
+ * Note: Storefront API doesn't support menus, so we use Admin API
+ * Shopify Admin API uses REST API, not GraphQL
  */
-export async function getShopifyPages({ limit = 50 } = {}) {
-  // This requires Admin API - for now return empty
-  // TODO: Implement Admin API pages fetch if needed
-  return { pages: [] };
-}
+export async function getShopifyMenu(menuHandle = 'main-menu') {
+  const ADMIN_API_TOKEN = process.env.SHOPIFY_ADMIN_API_TOKEN;
+  const SHOPIFY_STORE = process.env.SHOPIFY_STORE || SHOPIFY_STORE_DOMAIN;
+  const ADMIN_API_VERSION = '2024-10';
 
-/**
- * Fetch single page by handle
- */
-export async function getShopifyPageByHandle(handle) {
-  // This requires Admin API - for now return null
-  // TODO: Implement Admin API page fetch if needed
-  return null;
+  if (!ADMIN_API_TOKEN) {
+    console.warn('SHOPIFY_ADMIN_API_TOKEN not set, menu will be empty');
+    return { menu: null };
+  }
+
+  try {
+    // Shopify Admin API: Get all menus
+    // Note: Shopify Admin API uses REST, endpoint might be different
+    // Try: /admin/api/{version}/menus.json or check Shopify docs
+    
+    // Alternative: Use Online Store Navigation API
+    // GET /admin/api/{version}/online_store/navigation_menus.json
+    const menusResponse = await fetch(
+      `https://${SHOPIFY_STORE}/admin/api/${ADMIN_API_VERSION}/online_store/navigation_menus.json`,
+      {
+        headers: {
+          'X-Shopify-Access-Token': ADMIN_API_TOKEN,
+          'Content-Type': 'application/json',
+        },
+        cache: 'no-store',
+      }
+    );
+
+    if (!menusResponse.ok) {
+      // If navigation_menus doesn't work, try menus endpoint
+      const fallbackResponse = await fetch(
+        `https://${SHOPIFY_STORE}/admin/api/${ADMIN_API_VERSION}/menus.json`,
+        {
+          headers: {
+            'X-Shopify-Access-Token': ADMIN_API_TOKEN,
+            'Content-Type': 'application/json',
+          },
+          cache: 'no-store',
+        }
+      );
+
+      if (!fallbackResponse.ok) {
+        throw new Error(`Admin API error: ${fallbackResponse.statusText}`);
+      }
+
+      const menusData = await fallbackResponse.json();
+      const menu = menusData.menus?.find((m) => m.handle === menuHandle) || menusData.menus?.[0];
+
+      if (!menu) {
+        return { menu: null };
+      }
+
+      // Get menu items
+      const menuItemsResponse = await fetch(
+        `https://${SHOPIFY_STORE}/admin/api/${ADMIN_API_VERSION}/menus/${menu.id}/menu_items.json`,
+        {
+          headers: {
+            'X-Shopify-Access-Token': ADMIN_API_TOKEN,
+            'Content-Type': 'application/json',
+          },
+          cache: 'no-store',
+        }
+      );
+
+      if (!menuItemsResponse.ok) {
+        return { menu: null };
+      }
+
+      const menuItemsData = await menuItemsResponse.json();
+      
+      // Recursively fetch nested items
+      const processMenuItems = (items) => {
+        return items.map((item) => ({
+          id: item.id,
+          title: item.title,
+          url: item.url,
+          type: item.type,
+          items: item.items ? processMenuItems(item.items) : [],
+        }));
+      };
+
+      return {
+        menu: {
+          id: menu.id,
+          title: menu.title,
+          handle: menu.handle,
+          items: processMenuItems(menuItemsData.menu_items || []),
+        },
+      };
+    }
+
+    // Navigation menus API response
+    const menusData = await menusResponse.json();
+    const navigationMenus = menusData.navigation_menus || [];
+    
+    // Find menu by handle or use first menu
+    const menu = navigationMenus.find((m) => m.handle === menuHandle) || navigationMenus[0];
+
+    if (!menu) {
+      return { menu: null };
+    }
+
+    // Get menu items (navigation menu items are nested in the response)
+    return {
+      menu: {
+        id: menu.id,
+        title: menu.title,
+        handle: menu.handle,
+        items: (menu.items || []).map((item) => ({
+          id: item.id,
+          title: item.title,
+          url: item.url,
+          type: item.type,
+          items: item.items ? item.items.map((subItem) => ({
+            id: subItem.id,
+            title: subItem.title,
+            url: subItem.url,
+            type: subItem.type,
+          })) : [],
+        })),
+      },
+    };
+  } catch (error) {
+    console.error('Failed to fetch Shopify menu:', error);
+    return { menu: null };
+  }
 }
 
 /**

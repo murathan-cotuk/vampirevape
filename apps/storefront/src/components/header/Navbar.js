@@ -1,48 +1,41 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 
-const categories = [
-  { name: 'E-Liquids', href: '/e-liquids', subcategories: ['Alle Liquids', 'Top Liquids', 'Neue Liquids', 'Aromen'] },
-  { name: 'Hardware', href: '/hardware', subcategories: ['E-Zigaretten', 'Verdampfer', 'Akkus', 'Zubehör'] },
-  { name: 'Aromen', href: '/aromen', collectionFilter: 'aroma', subcategories: [] }, // Dynamic collections will be added
-  { name: 'Nicotine Shots', href: '/nicotine-shots', subcategories: [] },
-  { name: 'Bundles', href: '/bundles', subcategories: [] },
-  { name: 'Angebote', href: '/angebote', subcategories: ['Sale', 'Neuheiten', 'Bestseller'] },
-  { name: 'Marken', href: '/marken', subcategories: [] },
-  { name: 'Lexikon', href: '/lexikon', subcategories: [] },
-  { name: 'Blog', href: '/blog', subcategories: [] },
-];
+/**
+ * Map Shopify URL to Next.js route
+ */
+function mapShopifyUrl(url) {
+  if (!url) return '#';
+  
+  // Collection URL: /collections/[handle] → /kategorien/[handle]
+  if (url.startsWith('/collections/')) {
+    const handle = url.replace('/collections/', '');
+    return `/kategorien/${handle}`;
+  }
+  
+  // Product URL: /products/[handle] → /produkte/[handle]
+  if (url.startsWith('/products/')) {
+    const handle = url.replace('/products/', '');
+    return `/produkte/${handle}`;
+  }
+  
+  // Page URL: /pages/[handle] → /[handle]
+  if (url.startsWith('/pages/')) {
+    const handle = url.replace('/pages/', '');
+    return `/${handle}`;
+  }
+  
+  // Custom link or external URL
+  return url;
+}
 
-export default function Navbar({ isMenuOpen, setIsMenuOpen, collections = [] }) {
+export default function Navbar({ isMenuOpen, setIsMenuOpen, menu }) {
   const [activeDropdown, setActiveDropdown] = useState(null);
 
-  // Map collections to menu items
-  const menuCategories = useMemo(() => {
-    return categories.map((category) => {
-      if (category.collectionFilter && collections.length > 0) {
-        // Filter collections by name containing the filter term (case-insensitive)
-        const filteredCollections = collections.filter((col) =>
-          col.title?.toLowerCase().includes(category.collectionFilter.toLowerCase()) ||
-          col.handle?.toLowerCase().includes(category.collectionFilter.toLowerCase())
-        );
-        
-        // Convert collections to subcategories format
-        const collectionSubcategories = filteredCollections.map((col) => ({
-          name: col.title,
-          href: `/kategorien/${col.handle}`,
-          isCollection: true,
-        }));
-
-        return {
-          ...category,
-          subcategories: collectionSubcategories,
-        };
-      }
-      return category;
-    });
-  }, [collections]);
+  // If no menu from Shopify, show empty state or fallback
+  const menuItems = menu?.items || [];
 
   return (
     <nav className="bg-primary text-white">
@@ -59,70 +52,82 @@ export default function Navbar({ isMenuOpen, setIsMenuOpen, collections = [] }) 
           </button>
 
           {/* Desktop Menu */}
-          <ul className="hidden lg:flex items-center gap-1">
-            {menuCategories.map((category) => (
-              <li
-                key={category.name}
-                className="relative group"
-                onMouseEnter={() => setActiveDropdown(category.name)}
-                onMouseLeave={() => setActiveDropdown(null)}
-              >
-                <Link
-                  href={category.href}
-                  className="block px-4 py-4 hover:bg-primary-dark transition-colors font-medium"
+          {menuItems.length > 0 ? (
+            <ul className="hidden lg:flex items-center gap-1">
+              {menuItems.map((item) => (
+                <li
+                  key={item.id}
+                  className="relative group"
+                  onMouseEnter={() => setActiveDropdown(item.id)}
+                  onMouseLeave={() => setActiveDropdown(null)}
                 >
-                  {category.name}
-                </Link>
-                {category.subcategories && category.subcategories.length > 0 && (
-                  <div
-                    className={`absolute top-full left-0 bg-white text-gray-900 shadow-lg min-w-[200px] py-2 ${
-                      activeDropdown === category.name ? 'block' : 'hidden'
-                    } group-hover:block`}
+                  <Link
+                    href={mapShopifyUrl(item.url)}
+                    className="block px-4 py-4 hover:bg-primary-dark transition-colors font-medium"
                   >
-                    {category.subcategories.map((sub) => (
-                      <Link
-                        key={sub.name || sub}
-                        href={typeof sub === 'object' && sub.href ? sub.href : `${category.href}/${(sub.name || sub).toLowerCase().replace(/\s+/g, '-')}`}
-                        className="block px-4 py-2 hover:bg-gray-100 transition-colors"
-                      >
-                        {typeof sub === 'object' ? sub.name : sub}
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
+                    {item.title}
+                  </Link>
+                  {item.items && item.items.length > 0 && (
+                    <div
+                      className={`absolute top-full left-0 bg-white text-gray-900 shadow-lg min-w-[200px] py-2 ${
+                        activeDropdown === item.id ? 'block' : 'hidden'
+                      } group-hover:block`}
+                    >
+                      {item.items.map((subItem) => (
+                        <Link
+                          key={subItem.id}
+                          href={mapShopifyUrl(subItem.url)}
+                          className="block px-4 py-2 hover:bg-gray-100 transition-colors"
+                        >
+                          {subItem.title}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="hidden lg:flex items-center px-4 py-4 text-sm text-gray-300">
+              Menü yükleniyor...
+            </div>
+          )}
         </div>
 
         {/* Mobile Menu */}
         {isMenuOpen && (
           <div className="lg:hidden border-t border-primary-light">
-            {menuCategories.map((category) => (
-              <div key={category.name}>
-                <Link
-                  href={category.href}
-                  className="block px-4 py-3 hover:bg-primary-dark transition-colors"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  {category.name}
-                </Link>
-                {category.subcategories && category.subcategories.length > 0 && (
-                  <div className="bg-primary-dark pl-8">
-                    {category.subcategories.map((sub) => (
-                      <Link
-                        key={typeof sub === 'object' ? sub.name || sub.href : sub}
-                        href={typeof sub === 'object' && sub.href ? sub.href : `${category.href}/${(sub.name || sub).toLowerCase().replace(/\s+/g, '-')}`}
-                        className="block px-4 py-2 hover:bg-primary transition-colors text-sm"
-                        onClick={() => setIsMenuOpen(false)}
-                      >
-                        {typeof sub === 'object' ? sub.name : sub}
-                      </Link>
-                    ))}
-                  </div>
-                )}
+            {menuItems.length > 0 ? (
+              menuItems.map((item) => (
+                <div key={item.id}>
+                  <Link
+                    href={mapShopifyUrl(item.url)}
+                    className="block px-4 py-3 hover:bg-primary-dark transition-colors"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    {item.title}
+                  </Link>
+                  {item.items && item.items.length > 0 && (
+                    <div className="bg-primary-dark pl-8">
+                      {item.items.map((subItem) => (
+                        <Link
+                          key={subItem.id}
+                          href={mapShopifyUrl(subItem.url)}
+                          className="block px-4 py-2 hover:bg-primary transition-colors text-sm"
+                          onClick={() => setIsMenuOpen(false)}
+                        >
+                          {subItem.title}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))
+            ) : (
+              <div className="px-4 py-3 text-sm text-gray-300">
+                Menü yükleniyor...
               </div>
-            ))}
+            )}
           </div>
         )}
       </div>
