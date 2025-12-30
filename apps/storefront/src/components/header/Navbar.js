@@ -6,6 +6,9 @@ import { useState, useMemo } from 'react';
 /**
  * Build menu structure from collections
  * Groups collections by category prefix or name patterns
+ * 
+ * Note: Shopify Admin API doesn't provide direct access to Content > Menus
+ * So we use collections to build the menu dynamically based on collection names/handles
  */
 function buildMenuFromCollections(collections) {
   const menuItems = [];

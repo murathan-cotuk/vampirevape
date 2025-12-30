@@ -219,11 +219,11 @@ export async function getCollectionByHandle(handle) {
 }
 
 /**
- * Fetch menu from Shopify Admin API
- * Note: Storefront API doesn't support menus, so we use Admin API
- * Shopify Admin API uses REST API, not GraphQL
+ * Fetch menu from Shopify Admin API using GraphQL
+ * Note: Storefront API doesn't support menus, so we use Admin API GraphQL
+ * Content > Menus altından oluşturulan menüleri çeker
  */
-export async function getShopifyMenu(menuHandle = 'main-menu') {
+export async function getShopifyMenu(menuHandle = 'main-menu-1') {
   const ADMIN_API_TOKEN = process.env.SHOPIFY_ADMIN_API_TOKEN;
   const SHOPIFY_STORE = process.env.SHOPIFY_STORE || SHOPIFY_STORE_DOMAIN;
   const ADMIN_API_VERSION = '2024-10';
@@ -234,115 +234,105 @@ export async function getShopifyMenu(menuHandle = 'main-menu') {
   }
 
   try {
-    // Shopify Admin API: Get all menus
-    // Note: Shopify Admin API uses REST, endpoint might be different
-    // Try: /admin/api/{version}/menus.json or check Shopify docs
-    
-    // Alternative: Use Online Store Navigation API
-    // GET /admin/api/{version}/online_store/navigation_menus.json
-    const menusResponse = await fetch(
-      `https://${SHOPIFY_STORE}/admin/api/${ADMIN_API_VERSION}/online_store/navigation_menus.json`,
+    // Use GraphQL Admin API to fetch navigation menus
+    const graphqlQuery = `
+      query getNavigationMenus {
+        navigationMenus(first: 50) {
+          edges {
+            node {
+              id
+              title
+              handle
+              items {
+                id
+                title
+                url
+                type
+                items {
+                  id
+                  title
+                  url
+                  type
+                  items {
+                    id
+                    title
+                    url
+                    type
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    `;
+
+    const response = await fetch(
+      `https://${SHOPIFY_STORE}/admin/api/${ADMIN_API_VERSION}/graphql.json`,
       {
+        method: 'POST',
         headers: {
           'X-Shopify-Access-Token': ADMIN_API_TOKEN,
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({ query: graphqlQuery }),
         cache: 'no-store',
       }
     );
 
-    if (!menusResponse.ok) {
-      // If navigation_menus doesn't work, try menus endpoint
-      const fallbackResponse = await fetch(
-        `https://${SHOPIFY_STORE}/admin/api/${ADMIN_API_VERSION}/menus.json`,
-        {
-          headers: {
-            'X-Shopify-Access-Token': ADMIN_API_TOKEN,
-            'Content-Type': 'application/json',
-          },
-          cache: 'no-store',
-        }
-      );
-
-      if (!fallbackResponse.ok) {
-        throw new Error(`Admin API error: ${fallbackResponse.statusText}`);
-      }
-
-      const menusData = await fallbackResponse.json();
-      const menu = menusData.menus?.find((m) => m.handle === menuHandle) || menusData.menus?.[0];
-
-      if (!menu) {
-        return { menu: null };
-      }
-
-      // Get menu items
-      const menuItemsResponse = await fetch(
-        `https://${SHOPIFY_STORE}/admin/api/${ADMIN_API_VERSION}/menus/${menu.id}/menu_items.json`,
-        {
-          headers: {
-            'X-Shopify-Access-Token': ADMIN_API_TOKEN,
-            'Content-Type': 'application/json',
-          },
-          cache: 'no-store',
-        }
-      );
-
-      if (!menuItemsResponse.ok) {
-        return { menu: null };
-      }
-
-      const menuItemsData = await menuItemsResponse.json();
-      
-      // Recursively fetch nested items
-      const processMenuItems = (items) => {
-        return items.map((item) => ({
-          id: item.id,
-          title: item.title,
-          url: item.url,
-          type: item.type,
-          items: item.items ? processMenuItems(item.items) : [],
-        }));
-      };
-
-      return {
-        menu: {
-          id: menu.id,
-          title: menu.title,
-          handle: menu.handle,
-          items: processMenuItems(menuItemsData.menu_items || []),
-        },
-      };
+    if (!response.ok) {
+      throw new Error(`GraphQL Admin API error: ${response.statusText}`);
     }
 
-    // Navigation menus API response
-    const menusData = await menusResponse.json();
-    const navigationMenus = menusData.navigation_menus || [];
+    const data = await response.json();
+
+    if (data.errors) {
+      console.error('GraphQL errors:', data.errors);
+      throw new Error(`GraphQL errors: ${JSON.stringify(data.errors)}`);
+    }
+
+    const navigationMenus = data.data?.navigationMenus?.edges || [];
     
-    // Find menu by handle or use first menu
-    const menu = navigationMenus.find((m) => m.handle === menuHandle) || navigationMenus[0];
+    // Find menu by handle (try main-menu-1, main-menu, or use first menu)
+    let menu = navigationMenus.find(
+      (edge) => edge.node.handle === menuHandle
+    )?.node;
+
+    if (!menu && menuHandle === 'main-menu-1') {
+      // Fallback to main-menu
+      menu = navigationMenus.find(
+        (edge) => edge.node.handle === 'main-menu'
+      )?.node;
+    }
+
+    if (!menu && navigationMenus.length > 0) {
+      // Use first menu as fallback
+      menu = navigationMenus[0].node;
+    }
 
     if (!menu) {
+      console.warn(`Menu with handle "${menuHandle}" not found`);
       return { menu: null };
     }
 
-    // Get menu items (navigation menu items are nested in the response)
+    // Recursively process menu items
+    const processMenuItems = (items) => {
+      if (!items || items.length === 0) return [];
+      return items.map((item) => ({
+        id: item.id,
+        title: item.title,
+        url: item.url,
+        type: item.type,
+        items: processMenuItems(item.items),
+      }));
+    };
+
     return {
       menu: {
         id: menu.id,
         title: menu.title,
         handle: menu.handle,
-        items: (menu.items || []).map((item) => ({
-          id: item.id,
-          title: item.title,
-          url: item.url,
-          type: item.type,
-          items: item.items ? item.items.map((subItem) => ({
-            id: subItem.id,
-            title: subItem.title,
-            url: subItem.url,
-            type: subItem.type,
-          })) : [],
-        })),
+        items: processMenuItems(menu.items || []),
       },
     };
   } catch (error) {

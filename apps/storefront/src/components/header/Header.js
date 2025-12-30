@@ -14,6 +14,8 @@ export default function Header() {
 
   useEffect(() => {
     // Fetch collections from Shopify to build dynamic menu
+    // Note: Shopify Admin API doesn't provide direct access to Content > Menus
+    // So we use collections to build the menu dynamically
     getCollections({ limit: 50 })
       .then((data) => {
         const collectionsList = data?.collections?.edges?.map((e) => e.node) || [];
