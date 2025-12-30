@@ -62,6 +62,17 @@ export function getCartCount() {
   return cart.reduce((total, item) => total + item.quantity, 0);
 }
 
+export function getCartTotal() {
+  const cart = getCart();
+  // For now, return 0.00€ as placeholder
+  // TODO: Calculate actual total from cart items with prices
+  return cart.reduce((total, item) => {
+    // item.price should be in format { amount: "10.00", currencyCode: "EUR" }
+    const price = parseFloat(item.price?.amount || 0);
+    return total + (price * item.quantity);
+  }, 0);
+}
+
 function saveCart(cart) {
   if (typeof window === 'undefined') return;
   try {
