@@ -37,19 +37,21 @@ export default function Header() {
   }, []);
 
   return (
-    <header className="sticky top-0 z-50 bg-white shadow-md">
-      <AnnouncementBar />
-      <TopBar />
-      <LogoSearchCart 
-        isAccountOpen={isAccountOpen}
-        setIsAccountOpen={setIsAccountOpen}
-      />
+    <>
+      <header className="bg-white shadow-md">
+        <AnnouncementBar />
+        <TopBar />
+        <LogoSearchCart 
+          isAccountOpen={isAccountOpen}
+          setIsAccountOpen={setIsAccountOpen}
+        />
+      </header>
       <Navbar 
         isMenuOpen={isMenuOpen}
         setIsMenuOpen={setIsMenuOpen}
         menu={menu}
       />
-    </header>
+    </>
   );
 }
 
