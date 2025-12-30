@@ -2,10 +2,19 @@
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    domains: [
-      'cdn.shopify.com',
-      'res.cloudinary.com',
-      'vampirevape-2.myshopify.com'
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'cdn.shopify.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'vampirevape-2.myshopify.com',
+      },
     ],
     formats: ['image/avif', 'image/webp'],
   },
