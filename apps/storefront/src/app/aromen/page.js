@@ -29,8 +29,8 @@ export default async function AromenPage() {
       <div className="container-custom py-12">
         <h1 className="text-4xl font-bold mb-8">Aromen</h1>
         <p className="text-gray-600 mb-8 max-w-3xl">
-          Entdecken Sie unsere vielfältige Auswahl an Aromen für Ihre E-Liquids. 
-          Von fruchtig bis süß, von menthol bis tabak – finden Sie das perfekte Aroma für Ihren Geschmack.
+          Entdecken Sie unsere vielfältige Auswahl an Aromen für Ihre E-Liquids! 
+          Von fruchtig bis süß, von menthol bis tabak – finden Sie das perfekte Aroma für Ihren Geschmack!
         </p>
 
         {collections.length > 0 ? (

@@ -1,7 +1,7 @@
 export default function sitemap() {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.vampirevape.de';
 
-  // TODO: Fetch dynamic routes from Shopify and Strapi
+  // TODO: Fetch dynamic routes from Shopify
   const routes = [
     '',
     '/e-liquids',

@@ -15,9 +15,7 @@
     "setup-shopify": "node scripts/shopify-setup.js",
     "test-shopify": "node scripts/test-shopify-connection.js",
     "check-token": "node scripts/check-shopify-token.js",
-    "migrate": "cd scripts/migrate-shopware && npm install && npm run migrate",
-    "strapi:dev": "npm run develop --workspace=apps/strapi",
-    "strapi:build": "npm run build --workspace=apps/strapi"
+    "migrate": "cd scripts/migrate-shopware && npm install && npm run migrate"
   },
   "devDependencies": {
     "axios": "^1.6.7",
