@@ -4,7 +4,7 @@
 
 const axios = require('axios');
 
-const TOKEN = process.argv[2] || '7729bd1915ece3bc4203815d5eb44635';
+const TOKEN = process.argv[2] || process.env.SHOPIFY_API_KEY || 'your-api-key';
 const STORE_DOMAIN = 'vampirevape-2.myshopify.com';
 
 console.log('🧪 Testing Storefront API Token\n');

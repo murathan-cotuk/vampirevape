@@ -41,7 +41,7 @@ Vercel'de ve local `.env.local`'de şu değişkenler olmalı:
 
 ```env
 NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN=vampirevape-2.myshopify.com
-NEXT_PUBLIC_SHOPIFY_STOREFRONT_API_TOKEN=3e8e694e2169c489c7b4da88fff332fd
+NEXT_PUBLIC_SHOPIFY_STOREFRONT_API_TOKEN=your-storefront-token
 NEXT_PUBLIC_SITE_URL=https://vampirevape.vercel.app
 ```
 
