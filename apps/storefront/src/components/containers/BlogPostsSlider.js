@@ -7,7 +7,7 @@ export default function BlogPostsSlider() {
   const [posts, setPosts] = useState([]);
 
   useEffect(() => {
-    // TODO: Fetch from Strapi CMS
+    // TODO: Fetch from Shopify Blog Posts
     setPosts([
       { id: 1, title: 'Blog Post 1', excerpt: 'Kurze Beschreibung...', slug: 'blog-post-1' },
       { id: 2, title: 'Blog Post 2', excerpt: 'Kurze Beschreibung...', slug: 'blog-post-2' },

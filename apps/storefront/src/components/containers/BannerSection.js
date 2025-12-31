@@ -7,7 +7,7 @@ export default function BannerSection({ variant = 'double', size = 'small' }) {
   const banners = [
     {
       id: 1,
-      image: '/images/banner-1.jpg',
+      image: 'https://cdn.shopify.com/s/files/1/0969/5084/5726/files/DOJO_Banner_1.png?v=1767174504',
       title: 'Neue Liquids',
       link: '/e-liquids/neu',
     },

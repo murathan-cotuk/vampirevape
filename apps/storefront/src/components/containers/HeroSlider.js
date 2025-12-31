@@ -1,48 +1,58 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const slides = [
-  {
-    id: 1,
-    image: '/images/hero-1.jpg',
-    title: 'Premium E-Liquids',
-    subtitle: 'Entdecken Sie unsere Top-Qualität',
-    cta: 'Jetzt shoppen',
-    link: '/e-liquids',
-  },
-  {
-    id: 2,
-    image: '/images/hero-2.jpg',
-    title: 'Neue Hardware',
-    subtitle: 'Die neuesten E-Zigaretten',
-    cta: 'Mehr erfahren',
-    link: '/hardware',
-  },
-  {
-    id: 3,
-    image: '/images/hero-3.jpg',
-    title: 'Special Angebote',
-    subtitle: 'Bis zu 30% Rabatt',
-    cta: 'Angebote ansehen',
-    link: '/angebote',
-  },
-];
-
-export default function HeroSlider() {
+export default function HeroSlider({ slides = [] }) {
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
 
+  // Auto-slide functionality
   useEffect(() => {
+    if (slides.length === 0 || isPaused) return;
+
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % slides.length);
     }, 5000);
+
     return () => clearInterval(timer);
-  }, []);
+  }, [slides.length, isPaused]);
+
+  // Navigation functions
+  const nextSlide = () => {
+    setCurrentSlide((prev) => (prev + 1) % slides.length);
+    setIsPaused(true);
+    // Resume auto-slide after 10 seconds
+    setTimeout(() => setIsPaused(false), 10000);
+  };
+
+  const prevSlide = () => {
+    setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
+    setIsPaused(true);
+    // Resume auto-slide after 10 seconds
+    setTimeout(() => setIsPaused(false), 10000);
+  };
+
+  // Don't render if no slides
+  if (!slides || slides.length === 0) {
+    // Temporary: Show placeholder for testing
+    return (
+      <div className="relative h-[500px] md:h-[600px] lg:h-[700px] overflow-hidden bg-gradient-to-r from-primary to-primary-dark flex items-center justify-center">
+        <p className="text-white text-xl">Hero Slider</p>
+      </div>
+    );
+  }
+
+  const currentSlideData = slides[currentSlide];
 
   return (
-    <div className="relative h-[500px] md:h-[600px] lg:h-[700px] overflow-hidden">
+    <div 
+      className="relative h-[500px] md:h-[600px] lg:h-[700px] overflow-hidden"
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+    >
       <AnimatePresence mode="wait">
         <motion.div
           key={currentSlide}
@@ -52,55 +62,72 @@ export default function HeroSlider() {
           transition={{ duration: 0.5 }}
           className="absolute inset-0"
         >
-          <div className="relative w-full h-full bg-gradient-to-r from-primary to-primary-dark">
-            <div className="absolute inset-0 bg-black/30 z-10" />
-            <div className="container-custom relative z-20 h-full flex items-center">
-              <div className="text-white max-w-2xl">
-                <motion.h1
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ delay: 0.2 }}
-                  className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4"
-                >
-                  {slides[currentSlide].title}
-                </motion.h1>
-                <motion.p
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ delay: 0.3 }}
-                  className="text-xl md:text-2xl mb-8"
-                >
-                  {slides[currentSlide].subtitle}
-                </motion.p>
-                <motion.a
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ delay: 0.4 }}
-                  href={slides[currentSlide].link}
-                  className="btn-primary inline-block"
-                >
-                  {slides[currentSlide].cta}
-                </motion.a>
-              </div>
-            </div>
-          </div>
+          {currentSlideData.image ? (
+            <Link 
+              href={currentSlideData.link || '#'} 
+              className="block relative w-full h-full"
+            >
+              <Image
+                src={currentSlideData.image}
+                alt={currentSlideData.alt || `Hero slide ${currentSlide + 1}`}
+                fill
+                sizes="100vw"
+                className="object-cover"
+                priority={currentSlide === 0}
+              />
+            </Link>
+          ) : (
+            <div className="relative w-full h-full bg-gradient-to-r from-primary to-primary-dark" />
+          )}
         </motion.div>
       </AnimatePresence>
 
-      {/* Dots */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex gap-2">
-        {slides.map((_, index) => (
+      {/* Navigation Arrows */}
+      {slides.length > 1 && (
+        <>
+          {/* Left Arrow */}
           <button
-            key={index}
-            onClick={() => setCurrentSlide(index)}
-            className={`w-3 h-3 rounded-full transition-all ${
-              index === currentSlide ? 'bg-white' : 'bg-white/50'
-            }`}
-            aria-label={`Slide ${index + 1}`}
-          />
-        ))}
-      </div>
+            onClick={prevSlide}
+            className="absolute left-4 top-1/2 -translate-y-1/2 z-30 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full p-3 transition-all duration-200 group"
+            aria-label="Previous slide"
+          >
+            <svg
+              className="w-6 h-6 text-white group-hover:scale-110 transition-transform"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
+          </button>
+
+          {/* Right Arrow */}
+          <button
+            onClick={nextSlide}
+            className="absolute right-4 top-1/2 -translate-y-1/2 z-30 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full p-3 transition-all duration-200 group"
+            aria-label="Next slide"
+          >
+            <svg
+              className="w-6 h-6 text-white group-hover:scale-110 transition-transform"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 5l7 7-7 7"
+              />
+            </svg>
+          </button>
+        </>
+      )}
     </div>
   );
 }
-

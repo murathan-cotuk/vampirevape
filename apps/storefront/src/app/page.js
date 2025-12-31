@@ -13,13 +13,22 @@ import NewProductsSlider from '@/components/containers/NewProductsSlider';
 import BlogPostsSlider from '@/components/containers/BlogPostsSlider';
 import TextField from '@/components/containers/TextField';
 import PaymentMethods from '@/components/containers/PaymentMethods';
+import { getHeroSlides } from '@/utils/shopify';
 
-export default function HomePage() {
+export default async function HomePage() {
+  // Fetch hero slides from Shopify
+  let heroSlides = [];
+  try {
+    heroSlides = await getHeroSlides();
+  } catch (error) {
+    console.error('Failed to load hero slides:', error);
+  }
+
   return (
     <>
       <Header />
       <main>
-        <HeroSlider />
+        <HeroSlider slides={heroSlides} />
         <BannerSection variant="double" size="small" />
         <BannerSection variant="double" size="large" />
         <TopLiquidsSlider />

@@ -301,6 +301,71 @@ export async function getShopifyMenu(menuHandle = 'main-menu-1') {
 }
 
 /**
+ * Fetch store metafields (for banners, settings, etc.)
+ * Store metafields are accessible via the shop query
+ */
+export async function getStoreMetafields(namespace = 'hero', keys = []) {
+  if (keys.length === 0) {
+    return [];
+  }
+
+  // Build identifiers array for GraphQL
+  const identifiers = keys.map(key => ({
+    namespace,
+    key
+  }));
+
+  const query = `
+    query getStoreMetafields($identifiers: [HasMetafieldsIdentifier!]!) {
+      shop {
+        metafields(identifiers: $identifiers) {
+          id
+          namespace
+          key
+          value
+          type
+        }
+      }
+    }
+  `;
+
+  try {
+    const data = await shopifyFetch({ 
+      query, 
+      variables: { identifiers } 
+    });
+    return data?.shop?.metafields || [];
+  } catch (error) {
+    console.error('Failed to fetch store metafields:', error);
+    return [];
+  }
+}
+
+/**
+ * Get hero slider slides from Shopify Metafields
+ * Expected metafield structure:
+ * - namespace: "hero"
+ * - keys: "slider_slides" (JSON string with array of slide objects)
+ */
+export async function getHeroSlides() {
+  try {
+    const metafields = await getStoreMetafields('hero', ['slider_slides']);
+    const slidesMetafield = metafields.find(m => m.key === 'slider_slides');
+    
+    if (!slidesMetafield || !slidesMetafield.value) {
+      return [];
+    }
+
+    // Parse JSON string to array
+    const slides = JSON.parse(slidesMetafield.value);
+    return Array.isArray(slides) ? slides : [];
+  } catch (error) {
+    console.error('Failed to parse hero slides:', error);
+    return [];
+  }
+}
+
+/**
  * React hook for products (client-side)
  */
 export function useShopifyProducts(options = {}) {
