@@ -1,6 +1,6 @@
 git clone https://github.com/murathan-cotuk/vampirevape
 git init https://github.com/murathan-cotuk/vampirevape
-
+.
 cmd: git checkout dev && git add . && git commit -m "update" && git push origin dev
 ps: git checkout dev ; git add . ; git commit -m "update" ; git push origin dev
 
