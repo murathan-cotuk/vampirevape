@@ -22,7 +22,7 @@ export default async function sitemap() {
     dynamicRoutes = collections.map((collection) => ({
       url: `${baseUrl}/${collection.handle}`,
       lastModified: new Date(),
-      changeFrequency: 'weekly' as const,
+      changeFrequency: 'weekly',
       priority: 0.8,
     }));
   } catch (error) {
@@ -34,7 +34,7 @@ export default async function sitemap() {
     ...staticRoutes.map((route) => ({
       url: `${baseUrl}${route}`,
       lastModified: new Date(),
-      changeFrequency: 'weekly' as const,
+      changeFrequency: 'weekly',
       priority: route === '' ? 1 : 0.8,
     })),
     ...dynamicRoutes,
