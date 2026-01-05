@@ -99,7 +99,7 @@ npm install
 export SHOPWARE_URL=https://your-shopware-instance.com
 export SHOPWARE_ACCESS_KEY=your-access-key
 
-# Export
+# Export 
 npm run export
 ```
 
