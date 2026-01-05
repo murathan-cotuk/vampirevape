@@ -15,6 +15,9 @@ import TextField from '@/components/containers/TextField';
 import PaymentMethods from '@/components/containers/PaymentMethods';
 import { getHeroSlides } from '@/utils/shopify';
 
+// Force dynamic rendering since we fetch from Shopify API
+export const dynamic = 'force-dynamic';
+
 export default async function HomePage() {
   // Fetch hero slides from Shopify
   let heroSlides = [];

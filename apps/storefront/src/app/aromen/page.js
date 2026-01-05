@@ -4,6 +4,9 @@ import { getCollections } from '@/utils/shopify';
 import Link from 'next/link';
 import Image from 'next/image';
 
+// Force dynamic rendering since we fetch from Shopify API
+export const dynamic = 'force-dynamic';
+
 export async function generateMetadata() {
   return {
     title: 'Aromen – Vampire Vape',

@@ -6,6 +6,9 @@ import CategoryTemplateFilterTop from '@/components/kategorie/TemplateFilterTop'
 import Header from '@/components/header/Header';
 import Footer from '@/components/footer/Footer';
 
+// Force dynamic rendering since we fetch from Shopify API
+export const dynamic = 'force-dynamic';
+
 export async function generateMetadata({ params }) {
   const { handle } = params;
   // Best-effort metadata

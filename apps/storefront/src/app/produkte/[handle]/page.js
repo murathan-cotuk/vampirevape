@@ -6,6 +6,9 @@ import ProductTemplateD from '@/components/produkt/TemplateD';
 import Header from '@/components/header/Header';
 import Footer from '@/components/footer/Footer';
 
+// Force dynamic rendering since we fetch from Shopify API
+export const dynamic = 'force-dynamic';
+
 export async function generateMetadata({ params }) {
   const { handle } = params;
   try {
