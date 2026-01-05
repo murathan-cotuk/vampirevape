@@ -20,10 +20,59 @@ function formatPrice(amount, currencyCode = 'EUR') {
 }
 
 /**
- * Map Shopify URL to Next.js route
- * Handles both relative (/collections/...) and full URLs (https://...myshopify.com/collections/...)
+ * Build hierarchical URL from menu item
+ * Uses menu structure to create SEO-friendly URLs like /parent/child
  */
-function mapShopifyUrl(url) {
+function buildHierarchicalUrl(menuItem, allMenuItems = [], menu = null) {
+  if (!menuItem || !menuItem.url) return null;
+
+  // Extract handle from Shopify collection URL
+  const url = menuItem.url;
+  let handle = null;
+
+  if (url.includes('/collections/')) {
+    const match = url.match(/\/collections\/([^\/\?]+)/);
+    if (match) {
+      handle = match[1];
+    }
+  }
+
+  if (!handle) return null;
+
+  // Find parent in menu structure
+  const findParent = (item, items) => {
+    if (!items || items.length === 0) return null;
+    for (const parentItem of items) {
+      if (parentItem.items && parentItem.items.length > 0) {
+        if (parentItem.items.some(child => child.id === item.id || child.url === item.url)) {
+          return parentItem;
+        }
+        const found = findParent(item, parentItem.items);
+        if (found) return parentItem;
+      }
+    }
+    return null;
+  };
+
+  const parent = findParent(menuItem, allMenuItems || menu?.items || []);
+  
+  if (parent && parent.url && parent.url.includes('/collections/')) {
+    const parentMatch = parent.url.match(/\/collections\/([^\/\?]+)/);
+    if (parentMatch) {
+      const parentHandle = parentMatch[1];
+      return `/${parentHandle}/${handle}`;
+    }
+  }
+
+  // No parent, return just the handle
+  return `/${handle}`;
+}
+
+/**
+ * Map Shopify URL to Next.js route
+ * Handles hierarchical category URLs: /parent/child
+ */
+function mapShopifyUrl(url, menuItem = null, menu = null) {
   if (!url) return '#';
   
   // Remove query parameters and hash
@@ -39,9 +88,16 @@ function mapShopifyUrl(url) {
     path = cleanUrl;
   }
   
-  // Collection URL: /collections/[handle] → /[handle]
+  // Collection URL: Build hierarchical URL from menu structure
   if (path.startsWith('/collections/')) {
-    const handle = path.replace('/collections/', '').split('/')[0]; // Get first part after /collections/
+    if (menuItem && menu) {
+      const hierarchicalUrl = buildHierarchicalUrl(menuItem, menu.items, menu);
+      if (hierarchicalUrl) {
+        return hierarchicalUrl;
+      }
+    }
+    // Fallback: use handle directly
+    const handle = path.replace('/collections/', '').split('/')[0];
     return `/${handle}`;
   }
   
@@ -76,7 +132,7 @@ function mapShopifyUrl(url) {
       // It's a Shopify URL, try to extract the path
       try {
         const urlObj = new URL(cleanUrl);
-        return mapShopifyUrl(urlObj.pathname); // Recursively process the pathname
+        return mapShopifyUrl(urlObj.pathname, menuItem, menu); // Recursively process the pathname
       } catch {
         return url; // Return original if parsing fails
       }
@@ -98,8 +154,8 @@ export default function Navbar({ isMenuOpen, setIsMenuOpen, menu }) {
   const menuItems = menu?.items || [];
 
   // Check if a menu item is active (current path matches the menu URL)
-  const isActive = (url) => {
-    const mappedUrl = mapShopifyUrl(url);
+  const isActive = (url, menuItem = null) => {
+    const mappedUrl = mapShopifyUrl(url, menuItem, menu);
     return pathname === mappedUrl || pathname.startsWith(mappedUrl + '/');
   };
 
@@ -174,16 +230,16 @@ export default function Navbar({ isMenuOpen, setIsMenuOpen, menu }) {
                   onMouseLeave={() => setActiveDropdown(null)}
                 >
                   <Link
-                    href={mapShopifyUrl(item.url)}
+                    href={mapShopifyUrl(item.url, item, menu)}
                     className={`inline-block px-3 py-4 font-bold text-base relative transition-all duration-200 ${
-                      isActive(item.url)
+                      isActive(item.url, item)
                         ? 'text-[#ffd300] text-[1.2em]'
                         : 'group-hover:text-[#ffd300] group-hover:scale-110'
                     }`}
                   >
                     {item.title}
                     <span className={`absolute bottom-3 left-3 right-3 h-0.5 bg-[#ffd300] transition-all duration-200 ${
-                      isActive(item.url) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                      isActive(item.url, item) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
                     }`}></span>
                   </Link>
                   <AnimatePresence>
@@ -237,7 +293,7 @@ export default function Navbar({ isMenuOpen, setIsMenuOpen, menu }) {
                                 className="space-y-4 group/sub"
                               >
                                 <Link
-                                  href={mapShopifyUrl(subItem.url)}
+                                  href={mapShopifyUrl(subItem.url, subItem, menu)}
                                   className="block relative"
                                 >
                                   <motion.div
@@ -274,7 +330,7 @@ export default function Navbar({ isMenuOpen, setIsMenuOpen, menu }) {
                                         }}
                                       >
                                         <Link
-                                          href={mapShopifyUrl(subSubItem.url)}
+                                          href={mapShopifyUrl(subSubItem.url, subSubItem, menu)}
                                           className="group/item relative flex items-center gap-2 py-2 px-3 -mx-3 rounded-lg transition-all duration-200 hover:bg-gradient-to-r hover:from-primary/5 hover:to-accent/5"
                                         >
                                           <motion.div
@@ -304,7 +360,7 @@ export default function Navbar({ isMenuOpen, setIsMenuOpen, menu }) {
                                                 transition={{ duration: 0.15 }}
                                               >
                                                 <Link
-                                                  href={mapShopifyUrl(subSubSubItem.url)}
+                                                  href={mapShopifyUrl(subSubSubItem.url, subSubSubItem, menu)}
                                                   className="block text-xs text-gray-500 hover:text-primary hover:font-medium transition-all duration-200 py-1.5 px-2 rounded"
                                                 >
                                                   {subSubSubItem.title}
@@ -362,7 +418,7 @@ export default function Navbar({ isMenuOpen, setIsMenuOpen, menu }) {
               menuItems.map((item) => (
                 <div key={item.id}>
                   <Link
-                    href={mapShopifyUrl(item.url)}
+                    href={mapShopifyUrl(item.url, item, menu)}
                     className="block px-4 py-3 hover:bg-primary-dark transition-colors"
                     onClick={() => setIsMenuOpen(false)}
                   >
@@ -373,7 +429,7 @@ export default function Navbar({ isMenuOpen, setIsMenuOpen, menu }) {
                       {item.items.map((subItem) => (
                         <Link
                           key={subItem.id}
-                          href={mapShopifyUrl(subItem.url)}
+                          href={mapShopifyUrl(subItem.url, subItem, menu)}
                           className="block px-4 py-2 hover:bg-primary transition-colors text-sm"
                           onClick={() => setIsMenuOpen(false)}
                         >
