@@ -1,67 +1,67 @@
 # 🧛 Vampire Vape Shopify Plus Headless
 
-Headless e-commerce storefront for Vampire Vape, built with Next.js App Router and Shopify Plus.
+Headless E-Commerce Storefront für Vampire Vape, erstellt mit Next.js App Router und Shopify Plus.
 
-## 📋 Proje Özeti
+## 📋 Projektübersicht
 
-Bu proje, Shopware6'dan Shopify Plus'a geçiş yapan **Vampire Vape** için tam headless bir e-ticaret çözümüdür.
+Dieses Projekt ist eine vollständige Headless E-Commerce-Lösung für **Vampire Vape**, die von Shopware6 zu Shopify Plus migriert.
 
-### 🎯 Özellikler
+### 🎯 Features
 
 - **Next.js 14** (App Router, JavaScript)
 - **Shopify Plus Storefront API** (GraphQL)
-- **Shopify Plus Admin API** (Bulk import, metafields)
-- **Strapi CMS** (Blog, Lexikon, statik sayfalar)
-- **TailwindCSS** (Modern UI)
-- **Framer Motion** (Animasyonlar)
-- **Migration Scripts** (Shopware6 → Shopify Plus)
+- **Shopify Plus Admin API** (Bulk-Import, Metafelder)
+- **Strapi CMS** (Blog, Lexikon, statische Seiten)
+- **TailwindCSS** (Moderne UI)
+- **Framer Motion** (Animationen)
+- **Migrations-Skripte** (Shopware6 → Shopify Plus)
 
-## 🏗️ Proje Yapısı
+## 🏗️ Projektstruktur
 
 ```
 vampirevape-monorepo/
 ├── apps/
 │   ├── storefront/          # Next.js App Router
 │   │   ├── src/
-│   │   │   ├── app/         # Routes & pages
-│   │   │   ├── components/  # React components
+│   │   │   ├── app/         # Routes & Seiten
+│   │   │   ├── components/  # React-Komponenten
 │   │   │   └── utils/       # Utilities
 │   │   └── package.json
 │   └── strapi/               # Strapi CMS
 ├── scripts/
-│   └── migrate-shopware/    # Migration scripts
+│   └── migrate-shopware/    # Migrations-Skripte
 ├── infra/
-│   ├── docker-compose.yml    # Docker setup
-│   └── vercel.json          # Vercel config
+│   ├── docker-compose.yml    # Docker-Setup
+│   └── vercel.json          # Vercel-Konfiguration
 └── README.md
 ```
 
-## 🚀 Kurulum
+## 🚀 Installation
 
-### Gereksinimler
+### Voraussetzungen
 
 - Node.js 18+
-- npm veya yarn
-- Docker (Strapi için)
-- Shopify Partners hesabı
-- Shopware6 API erişimi (migration için)
+- npm oder yarn
+- Docker (für Strapi)
+- Shopify Partners-Account
+- Shopware6 API-Zugang (für Migration)
 
-### 1. Repository'yi klonlayın
+### 1. Repository klonen
 
 ```bash
 git clone <repository-url>
 cd vampirevape-monorepo
 ```
 
-### 2. Dependencies yükleyin
+### 2. Dependencies installieren
 
 ```bash
 npm install
 ```
 
-### 3. Environment Variables
+### 3. Umgebungsvariablen
 
-Storefront için `.env.local` dosyası oluşturun:
+Erstellen Sie eine `.env.local` Datei für den Storefront:
 
 ```env
 # Shopify
@@ -82,20 +82,20 @@ NEXT_PUBLIC_SITE_URL=https://www.vampirevape.de
 # Storefront
 npm run dev
 
-# Strapi (Docker ile)
+# Strapi (mit Docker)
 cd infra
 docker-compose up -d
 ```
 
 ## 📦 Migration (Shopware6 → Shopify Plus)
 
-### 1. Shopware6'dan Veri Export
+### 1. Datenexport aus Shopware6
 
 ```bash
 cd scripts/migrate-shopware
 npm install
 
-# Environment variables
+# Umgebungsvariablen
 export SHOPWARE_URL=https://your-shopware-instance.com
 export SHOPWARE_ACCESS_KEY=your-access-key
 
@@ -103,21 +103,21 @@ export SHOPWARE_ACCESS_KEY=your-access-key
 npm run export
 ```
 
-### 2. Veriyi Shopify Formatına Dönüştür
+### 2. Daten in Shopify-Format konvertieren
 
 ```bash
 npm run transform
 ```
 
-### 3. Görselleri Yükle
+### 3. Bilder hochladen
 
 ```bash
-# Shopify CDN veya Cloudinary
-export UPLOAD_METHOD=shopify  # veya cloudinary
+# Shopify CDN oder Cloudinary
+export UPLOAD_METHOD=shopify  # oder cloudinary
 npm run upload-images
 ```
 
-### 4. Shopify'a Import
+### 4. Import nach Shopify
 
 ```bash
 export SHOPIFY_STORE=vampirevape-2.myshopify.com
@@ -125,91 +125,91 @@ export SHOPIFY_ADMIN_API_TOKEN=your-admin-token
 npm run import
 ```
 
-### 5. Redirects Oluştur
+### 5. Weiterleitungen erstellen
 
 ```bash
 npm run redirects
-# CSV dosyasını Shopify Admin'e import edin
+# CSV-Datei in Shopify Admin importieren
 ```
 
-## 🛠️ Development
+## 🛠️ Entwicklung
 
 ### Storefront
 
 ```bash
 cd apps/storefront
-npm run dev      # Development server
-npm run build    # Production build
-npm run start    # Production server
+npm run dev      # Development Server
+npm run build    # Production Build
+npm run start    # Production Server
 ```
 
 ### Strapi CMS
 
 ```bash
 cd apps/strapi
-npm run develop  # Development mode
-npm run build    # Production build
+npm run develop  # Development-Modus
+npm run build    # Production Build
 ```
 
-## 🎨 Component Yapısı
+## 🎨 Komponentenstruktur
 
-### Header Components
-- `AnnouncementBar` - Duyuru çubuğu
-- `TopBar` - Üst bar (5 link)
-- `LogoSearchCart` - Logo, arama, favoriler, konto, warenkorb
-- `Navbar` - Ana navigasyon
+### Header-Komponenten
+- `AnnouncementBar` - Ankündigungsleiste
+- `TopBar` - Top-Leiste (5 Links)
+- `LogoSearchCart` - Logo, Suche, Favoriten, Konto, Warenkorb
+- `Navbar` - Hauptnavigation
 
-### Container Components
-- `HeroSlider` - Ana slider
-- `BannerSection` - Banner bölümleri
-- `TopLiquidsSlider` - Top liquids
-- `CategoryGrid` - Kategori grid
+### Container-Komponenten
+- `HeroSlider` - Hauptslider
+- `BannerSection` - Banner-Bereiche
+- `TopLiquidsSlider` - Top Liquids
+- `CategoryGrid` - Kategorie-Grid
 - `TrustedShopsReviews` - Kundenbewertungen
-- `FlavoursGrid` - Aromen grid
-- `BlogPostsSlider` - Blog posts
+- `FlavoursGrid` - Aromen-Grid
+- `BlogPostsSlider` - Blog-Beiträge
 
-### Product Templates
-- `TemplateA` - Klasik ürün sayfası
-- `TemplateB` - Big media layout
-- `TemplateC` - Bundle template
-- `TemplateD` - Nicotine/Shot template
+### Produkt-Templates
+- `TemplateA` - Klassische Produktseite
+- `TemplateB` - Big Media Layout
+- `TemplateC` - Bundle-Template
+- `TemplateD` - Nicotine/Shot-Template
 
-### Category Templates
-- `TemplateGrid` - Grid layout
-- `TemplateMasonry` - Masonry layout
-- `TemplateFilterLeft` - Filter sidebar
-- `TemplateFilterTop` - Filter top bar
+### Kategorie-Templates
+- `TemplateGrid` - Grid-Layout
+- `TemplateMasonry` - Masonry-Layout
+- `TemplateFilterLeft` - Filter-Sidebar
+- `TemplateFilterTop` - Filter-Top-Leiste
 
-## 🔗 Entegrasyonlar
+## 🔗 Integrationen
 
 ### Shopify Plus
-- Storefront API (GraphQL) - Ürün, koleksiyon, stok
-- Admin API - Import, metafields, media
+- Storefront API (GraphQL) - Produkte, Kollektionen, Lagerbestand
+- Admin API - Import, Metafelder, Medien
 
 ### Strapi CMS
-- Blog posts
-- Lexikon entries
-- Static pages
+- Blog-Beiträge
+- Lexikon-Einträge
+- Statische Seiten
 
-### Ödeme Sistemleri
+### Zahlungssysteme
 - Klarna
 - PayPal
 - Stripe
 - Apple Pay
 - Google Pay
 
-### Diğer
-- Trusted Shops (Reviews)
+### Weitere
+- Trusted Shops (Bewertungen)
 - Mailchimp (Newsletter)
-- Recaptcha (Forms)
-- Uptain (Conversion optimization)
+- Recaptcha (Formulare)
+- Uptain (Conversion-Optimierung)
 - Xentral & Odoo (ERP)
 
 ## 📱 Responsive & PWA
 
-- Tüm componentler responsive
-- PWA configuration (ileride)
-- Mobile-first approach
+- Alle Komponenten sind responsive
+- PWA-Konfiguration (zukünftig)
+- Mobile-First-Ansatz
 
 ## 🚢 Deployment
 
@@ -219,18 +219,18 @@ npm run build    # Production build
 vercel --prod
 ```
 
-Vercel otomatik olarak Next.js uygulamasını deploy eder.
+Vercel deployt die Next.js-Anwendung automatisch.
 
 ### Strapi
 
-Strapi ayrı bir server'da veya Docker container'da çalıştırılabilir.
+Strapi kann auf einem separaten Server oder in einem Docker-Container ausgeführt werden.
 
 ## 📝 SEO
 
-- Meta tags (title, description, canonical)
-- Schema.org markup (Product, Breadcrumb, Article)
-- Sitemap generation
-- 301 redirects (Shopware6 → Shopify)
+- Meta-Tags (Titel, Beschreibung, Canonical)
+- Schema.org-Markup (Product, Breadcrumb, Article)
+- Sitemap-Generierung
+- 301-Weiterleitungen (Shopware6 → Shopify)
 
 ## 🧪 Testing
 
@@ -238,23 +238,22 @@ Strapi ayrı bir server'da veya Docker container'da çalıştırılabilir.
 # Linting
 npm run lint
 
-# Type checking (if TypeScript added later)
+# Type Checking (falls TypeScript später hinzugefügt wird)
 npm run type-check
 ```
 
-## 📄 Lisans
+## 📄 Lizenz
 
-Proprietary - Vampire Vape
+Proprietär - Vampire Vape
 
-## 👥 Katkıda Bulunanlar
+## 👥 Mitwirkende
 
-- Development Team
+- Entwicklungsteam
 
-## 📞 İletişim
+## 📞 Kontakt
 
-Sorularınız için issue açabilirsiniz.
+Für Fragen können Sie ein Issue erstellen.
 
 ---
 
-**Not:** Bu proje aktif geliştirme aşamasındadır. Production'a geçmeden önce tüm entegrasyonların test edilmesi gerekmektedir.
-
+**Hinweis:** Dieses Projekt befindet sich in aktiver Entwicklung. Vor dem Produktivbetrieb müssen alle Integrationen getestet werden.
