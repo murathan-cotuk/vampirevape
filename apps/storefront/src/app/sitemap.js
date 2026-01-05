@@ -1,5 +1,8 @@
 import { getCollections } from '@/utils/shopify';
 
+// Force dynamic rendering to avoid static generation errors
+export const dynamic = 'force-dynamic';
+
 export default async function sitemap() {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://vampirevape.vercel.app';
 

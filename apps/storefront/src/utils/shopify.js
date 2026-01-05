@@ -13,12 +13,13 @@ const storefrontApiUrl = `https://${SHOPIFY_STORE_DOMAIN}/api/${API_VERSION}/gra
  */
 export async function shopifyFetch({ query, variables = {} }) {
   if (!STOREFRONT_API_TOKEN) {
-    throw new Error(
+    const error = new Error(
       'NEXT_PUBLIC_SHOPIFY_STOREFRONT_API_TOKEN is not set. ' +
-      'Please check your .env.local file. ' +
-      'Token might not be visible if distribution is not completed. ' +
-      'See SHOPIFY_STOREFRONT_TOKEN_TROUBLESHOOTING.md for help.'
+      'Please check your environment variables. ' +
+      'In Vercel, go to Settings → Environment Variables and add NEXT_PUBLIC_SHOPIFY_STOREFRONT_API_TOKEN.'
     );
+    console.error(error.message);
+    throw error;
   }
 
   try {

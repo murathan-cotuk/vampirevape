@@ -3,7 +3,12 @@ import { getShopifyMenu } from '@/utils/shopify';
 /**
  * API route to fetch Shopify menu from Storefront API
  * Content > Menus altından oluşturulan menüleri çeker
+ * 
+ * Force dynamic rendering to avoid static generation errors
  */
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export async function GET(request) {
   try {
     // Get menu handle from query param or use default
