@@ -20,7 +20,7 @@ export default function AccountDropdown({ onClose }) {
   return (
     <div
       ref={dropdownRef}
-      className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50"
+      className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-[100]"
     >
       <Link
         href="/konto/uebersicht"

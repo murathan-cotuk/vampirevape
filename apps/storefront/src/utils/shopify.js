@@ -189,6 +189,18 @@ export async function getCollectionByHandle(handle) {
         title
         handle
         description
+        descriptionHtml
+        image {
+          url
+          altText
+        }
+        metafields(identifiers: [{namespace: "custom", key: "category_banner"}]) {
+          id
+          namespace
+          key
+          value
+          type
+        }
         products(first: 50) {
           edges {
             node {

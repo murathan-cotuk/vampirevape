@@ -252,10 +252,10 @@ export default function Navbar({ isMenuOpen, setIsMenuOpen, menu }) {
                           duration: 0.2,
                           ease: [0.4, 0, 0.2, 1]
                         }}
-                        className="absolute top-full left-1/2 -translate-x-1/2 mt-2"
+                        className="absolute top-full left-1/2 -translate-x-1/2 mt-0"
                         style={{ 
-                          minWidth: '800px', 
-                          maxWidth: '1200px', 
+                          minWidth: '900px', 
+                          maxWidth: '1400px', 
                           width: 'max-content',
                           zIndex: 1000
                         }}
@@ -270,7 +270,7 @@ export default function Navbar({ isMenuOpen, setIsMenuOpen, menu }) {
                         />
                         
                         {/* Content */}
-                        <div className="relative py-12 px-12">
+                        <div className="relative py-8 px-10">
                           {/* Decorative gradient line at top */}
                           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-accent to-primary opacity-20 rounded-t-2xl" />
                           
@@ -278,7 +278,7 @@ export default function Navbar({ isMenuOpen, setIsMenuOpen, menu }) {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             transition={{ delay: 0.1, duration: 0.3 }}
-                            className="grid grid-cols-3 gap-x-16 gap-y-8"
+                            className="grid grid-cols-4 gap-x-12 gap-y-6"
                           >
                             {item.items.map((subItem, subIndex) => (
                               <motion.div
@@ -290,24 +290,24 @@ export default function Navbar({ isMenuOpen, setIsMenuOpen, menu }) {
                                   duration: 0.3,
                                   ease: [0.4, 0, 0.2, 1]
                                 }}
-                                className="space-y-4 group/sub"
+                                className="space-y-3 group/sub"
                               >
                                 <Link
                                   href={mapShopifyUrl(subItem.url, subItem, menu)}
                                   className="block relative"
                                 >
                                   <motion.div
-                                    whileHover={{ x: 4 }}
+                                    whileHover={{ x: 3 }}
                                     transition={{ duration: 0.2 }}
-                                    className="flex items-center gap-3 mb-4 pb-3 border-b border-gray-200/60"
+                                    className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-200/50"
                                   >
-                                    <span className="font-bold text-lg text-gray-900 group-hover/sub:text-primary transition-colors duration-200">
+                                    <span className="font-bold text-base text-gray-900 group-hover/sub:text-primary transition-colors duration-200">
                                       {subItem.title}
                                     </span>
                                     <motion.svg
-                                      initial={{ opacity: 0, x: -5 }}
+                                      initial={{ opacity: 0, x: -3 }}
                                       whileHover={{ opacity: 1, x: 0 }}
-                                      className="w-4 h-4 text-primary opacity-0 group-hover/sub:opacity-100 transition-opacity"
+                                      className="w-3.5 h-3.5 text-primary opacity-0 group-hover/sub:opacity-100 transition-opacity"
                                       fill="none"
                                       stroke="currentColor"
                                       viewBox="0 0 24 24"
@@ -318,7 +318,7 @@ export default function Navbar({ isMenuOpen, setIsMenuOpen, menu }) {
                                 </Link>
                                 
                                 {subItem.items && subItem.items.length > 0 && (
-                                  <ul className="space-y-2.5">
+                                  <ul className="space-y-1.5">
                                     {subItem.items.map((subSubItem, subSubIndex) => (
                                       <motion.li
                                         key={subSubItem.id}
