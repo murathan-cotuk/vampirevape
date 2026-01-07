@@ -5,17 +5,18 @@ import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getCartTotal } from '@/utils/cart';
+import { getCartTotal, getCartCount } from '@/utils/cart';
 
 function formatPrice(amount, currencyCode = 'EUR') {
   try {
     const value = Number(amount || 0);
+    // Force EUR currency
     return new Intl.NumberFormat('de-DE', {
       style: 'currency',
-      currency: currencyCode,
+      currency: 'EUR',
     }).format(value);
   } catch {
-    return `${amount} ${currencyCode}`;
+    return `${amount} EUR`;
   }
 }
 
@@ -148,6 +149,7 @@ export default function Navbar({ isMenuOpen, setIsMenuOpen, menu }) {
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [isScrolled, setIsScrolled] = useState(false);
   const [cartTotal, setCartTotal] = useState(0);
+  const [cartCount, setCartCount] = useState(0);
   const pathname = usePathname();
 
   // If no menu from Shopify, show empty state or fallback
@@ -172,25 +174,27 @@ export default function Navbar({ isMenuOpen, setIsMenuOpen, menu }) {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Cart total
+  // Cart total and count
   useEffect(() => {
-    const updateCartTotal = () => {
+    const updateCart = () => {
       const total = getCartTotal();
+      const count = getCartCount();
       setCartTotal(total);
+      setCartCount(count);
     };
 
-    updateCartTotal();
-    window.addEventListener('storage', updateCartTotal);
-    window.addEventListener('cartUpdated', updateCartTotal);
+    updateCart();
+    window.addEventListener('storage', updateCart);
+    window.addEventListener('cartUpdated', updateCart);
 
     return () => {
-      window.removeEventListener('storage', updateCartTotal);
-      window.removeEventListener('cartUpdated', updateCartTotal);
+      window.removeEventListener('storage', updateCart);
+      window.removeEventListener('cartUpdated', updateCart);
     };
   }, []);
 
   return (
-    <nav className="sticky top-0 z-50 bg-primary text-white shadow-md">
+    <nav className="sticky top-0 z-50 bg-primary text-white shadow-md relative">
       <div className="container-custom">
         <div className="flex items-center justify-between">
           {/* Left: Logo (only visible when scrolled) */}
@@ -226,8 +230,14 @@ export default function Navbar({ isMenuOpen, setIsMenuOpen, menu }) {
                 <li
                   key={item.id}
                   className="relative group"
-                  onMouseEnter={() => setActiveDropdown(item.id)}
-                  onMouseLeave={() => setActiveDropdown(null)}
+                  onMouseEnter={() => {
+                    if (item.items && item.items.length > 0) {
+                      setActiveDropdown(item.id);
+                    }
+                  }}
+                  onMouseLeave={() => {
+                    // Don't close immediately - let megamenu handle it
+                  }}
                 >
                   <Link
                     href={mapShopifyUrl(item.url, item, menu)}
@@ -245,104 +255,111 @@ export default function Navbar({ isMenuOpen, setIsMenuOpen, menu }) {
                   <AnimatePresence>
                     {item.items && item.items.length > 0 && activeDropdown === item.id && (
                       <motion.div
-                        initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                        initial={{ opacity: 0, height: 0, y: -10 }}
+                        animate={{ opacity: 1, height: 'auto', y: 0 }}
+                        exit={{ opacity: 0, height: 0, y: -10 }}
                         transition={{ 
-                          duration: 0.2,
-                          ease: [0.4, 0, 0.2, 1]
+                          duration: 0.5,
+                          ease: [0.16, 1, 0.3, 1] // Smooth, liquid-like easing
                         }}
-                        className="absolute top-full left-1/2 -translate-x-1/2 mt-0"
+                        className="absolute top-full left-0 w-screen overflow-hidden"
                         style={{ 
-                          minWidth: '900px', 
-                          maxWidth: '1400px', 
-                          width: 'max-content',
+                          left: 0,
+                          right: 0,
+                          marginLeft: 'calc(-50vw + 50%)',
                           zIndex: 1000
                         }}
                         onMouseEnter={() => setActiveDropdown(item.id)}
                         onMouseLeave={() => setActiveDropdown(null)}
                       >
-                        {/* Backdrop with blur effect */}
-                        <div className="absolute inset-0 bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-gray-100/50" 
-                             style={{ 
-                               boxShadow: '0 20px 60px -12px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05)'
-                             }}
+                        {/* Backdrop - Solid white background with strong shadow */}
+                        <div 
+                          className="absolute inset-0 bg-white border-t-4 border-primary" 
+                          style={{ 
+                            boxShadow: '0 20px 60px -10px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0, 0, 0, 0.1)'
+                          }}
                         />
                         
-                        {/* Content */}
-                        <div className="relative py-8 px-10">
-                          {/* Decorative gradient line at top */}
-                          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-accent to-primary opacity-20 rounded-t-2xl" />
+                        {/* Content Container - Same width as navbar */}
+                        <div className="relative py-8 px-12 container-custom mx-auto">
+                          {/* Top decorative gradient */}
+                          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-[#ffd300] to-primary" />
                           
+                          {/* Main Content Grid - Responsive columns based on item count */}
                           <motion.div 
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ delay: 0.1, duration: 0.3 }}
-                            className="grid grid-cols-4 gap-x-12 gap-y-6"
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.15, duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                            className={`grid gap-x-16 gap-y-8 ${
+                              item.items.length === 1 ? 'grid-cols-1' :
+                              item.items.length === 2 ? 'grid-cols-2' :
+                              item.items.length === 3 ? 'grid-cols-3' :
+                              item.items.length === 4 ? 'grid-cols-4' :
+                              'grid-cols-5'
+                            }`}
                           >
                             {item.items.map((subItem, subIndex) => (
                               <motion.div
                                 key={subItem.id}
-                                initial={{ opacity: 0, x: -20 }}
-                                animate={{ opacity: 1, x: 0 }}
+                                initial={{ opacity: 0, y: 15 }}
+                                animate={{ opacity: 1, y: 0 }}
                                 transition={{ 
-                                  delay: 0.1 + subIndex * 0.05,
-                                  duration: 0.3,
-                                  ease: [0.4, 0, 0.2, 1]
+                                  delay: 0.2 + subIndex * 0.05,
+                                  duration: 0.4,
+                                  ease: [0.16, 1, 0.3, 1]
                                 }}
-                                className="space-y-3 group/sub"
+                                className="space-y-4 group/sub"
                               >
+                                {/* Main Category Link */}
                                 <Link
                                   href={mapShopifyUrl(subItem.url, subItem, menu)}
-                                  className="block relative"
+                                  className="block relative group/link"
                                 >
-                                  <motion.div
-                                    whileHover={{ x: 3 }}
-                                    transition={{ duration: 0.2 }}
-                                    className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-200/50"
-                                  >
-                                    <span className="font-bold text-base text-gray-900 group-hover/sub:text-primary transition-colors duration-200">
+                                  <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-gray-300 group-hover/link:border-primary transition-colors">
+                                    <span className="font-bold text-lg text-gray-800 group-hover/link:text-primary transition-colors duration-200">
                                       {subItem.title}
                                     </span>
                                     <motion.svg
-                                      initial={{ opacity: 0, x: -3 }}
+                                      initial={{ opacity: 0, x: -5 }}
                                       whileHover={{ opacity: 1, x: 0 }}
-                                      className="w-3.5 h-3.5 text-primary opacity-0 group-hover/sub:opacity-100 transition-opacity"
+                                      className="w-4 h-4 text-primary opacity-0 group-hover/link:opacity-100 transition-opacity"
                                       fill="none"
                                       stroke="currentColor"
                                       viewBox="0 0 24 24"
                                     >
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
                                     </motion.svg>
-                                  </motion.div>
+                                  </div>
                                 </Link>
                                 
+                                {/* Subcategories */}
                                 {subItem.items && subItem.items.length > 0 && (
-                                  <ul className="space-y-1.5">
+                                  <ul className="space-y-2">
                                     {subItem.items.map((subSubItem, subSubIndex) => (
                                       <motion.li
                                         key={subSubItem.id}
                                         initial={{ opacity: 0, x: -10 }}
                                         animate={{ opacity: 1, x: 0 }}
                                         transition={{ 
-                                          delay: 0.15 + subIndex * 0.05 + subSubIndex * 0.03,
-                                          duration: 0.25
+                                          delay: 0.25 + subIndex * 0.05 + subSubIndex * 0.03,
+                                          duration: 0.35,
+                                          ease: [0.16, 1, 0.3, 1]
                                         }}
                                       >
                                         <Link
                                           href={mapShopifyUrl(subSubItem.url, subSubItem, menu)}
-                                          className="group/item relative flex items-center gap-2 py-2 px-3 -mx-3 rounded-lg transition-all duration-200 hover:bg-gradient-to-r hover:from-primary/5 hover:to-accent/5"
+                                          className="group/item relative flex items-center gap-2 py-2.5 px-3 -mx-3 rounded-lg transition-all duration-200 hover:bg-gradient-to-r hover:from-primary/8 hover:to-[#ffd300]/8 hover:shadow-sm"
                                         >
                                           <motion.div
-                                            className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-0 bg-gradient-to-b from-primary to-accent rounded-r-full opacity-0 group-hover/item:opacity-100 group-hover/item:h-4 transition-all duration-200"
+                                            className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-0 bg-gradient-to-b from-primary to-[#ffd300] rounded-r-full opacity-0 group-hover/item:opacity-100 group-hover/item:h-5 transition-all duration-200"
                                           />
-                                          <span className="text-sm text-gray-700 group-hover/item:text-primary group-hover/item:font-semibold transition-all duration-200 relative z-10">
+                                          <span className="text-sm font-medium text-gray-800 group-hover/item:text-primary group-hover/item:font-bold transition-all duration-200 relative z-10">
                                             {subSubItem.title}
                                           </span>
                                           <motion.div
                                             initial={{ scale: 0, opacity: 0 }}
                                             whileHover={{ scale: 1, opacity: 1 }}
-                                            className="w-1.5 h-1.5 rounded-full bg-accent opacity-0 group-hover/item:opacity-100 transition-opacity"
+                                            className="w-1.5 h-1.5 rounded-full bg-[#ffd300] opacity-0 group-hover/item:opacity-100 transition-opacity"
                                           />
                                         </Link>
                                         
@@ -361,7 +378,7 @@ export default function Navbar({ isMenuOpen, setIsMenuOpen, menu }) {
                                               >
                                                 <Link
                                                   href={mapShopifyUrl(subSubSubItem.url, subSubSubItem, menu)}
-                                                  className="block text-xs text-gray-500 hover:text-primary hover:font-medium transition-all duration-200 py-1.5 px-2 rounded"
+                                                  className="block text-xs text-gray-600 hover:text-primary hover:font-semibold transition-all duration-200 py-1.5 px-2 rounded hover:bg-gray-100"
                                                 >
                                                   {subSubSubItem.title}
                                                 </Link>
@@ -395,19 +412,22 @@ export default function Navbar({ isMenuOpen, setIsMenuOpen, menu }) {
 
           {/* Right: Cart (only visible when scrolled) */}
           {isScrolled && (
-            <Link href="/warenkorb" className="flex-shrink-0 lg:flex items-center gap-2 hidden">
+            <button 
+              onClick={() => window.dispatchEvent(new CustomEvent('openCartSidebar'))}
+              className="flex-shrink-0 lg:flex items-center gap-2 hidden"
+            >
               <div className="relative">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
-                <span className="absolute top-0 right-0 translate-x-1/2 -translate-y-1/2 bg-white text-primary text-[9px] font-bold rounded-full min-w-[16px] h-[16px] flex items-center justify-center px-0.5 border-2 border-primary shadow-sm z-10">
-                  0
+                <span className="absolute top-0 right-0 translate-x-1/2 -translate-y-1/2 bg-white text-primary text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-0.5 border-2 border-primary shadow-sm z-10">
+                  {cartCount}
                 </span>
               </div>
               <span className={`text-sm font-medium ${cartTotal > 0 ? 'text-white' : 'text-white/70'}`}>
                 {formatPrice(cartTotal)}
               </span>
-            </Link>
+            </button>
           )}
         </div>
 

@@ -17,7 +17,9 @@ export default function App() {
     <AppProvider embedded apiKey={apiKey}>
       <s-app-nav>
         <s-link href="/app">Home</s-link>
+        <s-link href="/app/image-manager">Görsel Yönetimi</s-link>
         <s-link href="/app/hero-slider">Hero Slider</s-link>
+        <s-link href="/app/category-banners">Kategori Banner</s-link>
         <s-link href="/app/additional">Additional page</s-link>
       </s-app-nav>
       <Outlet />

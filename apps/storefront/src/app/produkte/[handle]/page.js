@@ -1,8 +1,5 @@
 import { getProductByHandle } from '@/utils/shopify';
-import ProductTemplateA from '@/components/produkt/TemplateA';
-import ProductTemplateB from '@/components/produkt/TemplateB';
-import ProductTemplateC from '@/components/produkt/TemplateC';
-import ProductTemplateD from '@/components/produkt/TemplateD';
+import ProductTemplateNew from '@/components/produkt/ProductTemplateNew';
 import Header from '@/components/header/Header';
 import Footer from '@/components/footer/Footer';
 
@@ -35,17 +32,8 @@ export default async function ProductPage({ params }) {
     product = data?.product || null;
   } catch (_) {}
 
-  // For now: always use Template A. Later can be based on product metafields
-  const template = 'A';
-
-  const templates = {
-    A: ProductTemplateA,
-    B: ProductTemplateB,
-    C: ProductTemplateC,
-    D: ProductTemplateD,
-  };
-
-  const ProductTemplate = templates[template] || ProductTemplateA;
+  // Use new template with all features
+  const ProductTemplate = ProductTemplateNew;
 
   return (
     <>

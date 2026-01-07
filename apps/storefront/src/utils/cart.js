@@ -17,14 +17,21 @@ export function getCart() {
   }
 }
 
-export function addToCart(variantId, quantity = 1) {
+export function addToCart(variantId, quantity = 1, productData = {}) {
   const cart = getCart();
   const existingItem = cart.find((item) => item.variantId === variantId);
 
   if (existingItem) {
     existingItem.quantity += quantity;
   } else {
-    cart.push({ variantId, quantity });
+    cart.push({
+      variantId,
+      quantity,
+      title: productData.title || '',
+      variantTitle: productData.variantTitle || '',
+      image: productData.image || '',
+      price: productData.price || { amount: '0.00', currencyCode: 'EUR' },
+    });
   }
 
   saveCart(cart);

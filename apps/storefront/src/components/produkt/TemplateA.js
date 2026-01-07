@@ -6,12 +6,13 @@ import Image from 'next/image';
 function formatPrice(amount, currencyCode) {
   try {
     const value = Number(amount || 0);
+    // Force EUR currency
     return new Intl.NumberFormat('de-DE', {
       style: 'currency',
-      currency: currencyCode || 'EUR',
+      currency: 'EUR',
     }).format(value);
   } catch {
-    return `${amount} ${currencyCode || 'EUR'}`;
+    return `${amount} EUR`;
   }
 }
 

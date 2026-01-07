@@ -71,6 +71,35 @@ export async function getProducts({ collection = null, limit = 20, cursor = null
                 currencyCode
               }
             }
+            variants(first: 10) {
+              edges {
+                node {
+                  id
+                  title
+                  price {
+                    amount
+                    currencyCode
+                  }
+                  availableForSale
+                  quantityAvailable
+                  selectedOptions {
+                    name
+                    value
+                  }
+                }
+              }
+            }
+            metafields(first: 50) {
+              edges {
+                node {
+                  id
+                  namespace
+                  key
+                  value
+                  type
+                }
+              }
+            }
             images(first: 1) {
               edges {
                 node {
@@ -138,12 +167,26 @@ export async function getProductByHandle(handle) {
                 currencyCode
               }
               availableForSale
+              quantityAvailable
               selectedOptions {
                 name
                 value
               }
             }
           }
+        }
+        metafields(identifiers: [
+          {namespace: "custom", key: "ml"},
+          {namespace: "custom", key: "volume"},
+          {namespace: "custom", key: "inhalt"},
+          {namespace: "custom", key: "flavor"},
+          {namespace: "custom", key: "nicotine_strength"}
+        ]) {
+          id
+          namespace
+          key
+          value
+          type
         }
       }
     }
@@ -207,11 +250,46 @@ export async function getCollectionByHandle(handle) {
               id
               title
               handle
+              vendor
               priceRange {
                 minVariantPrice {
                   amount
                   currencyCode
                 }
+                maxVariantPrice {
+                  amount
+                  currencyCode
+                }
+              }
+              variants(first: 10) {
+                edges {
+                  node {
+                    id
+                    price {
+                      amount
+                      currencyCode
+                    }
+                    availableForSale
+                    quantityAvailable
+                    selectedOptions {
+                      name
+                      value
+                    }
+                  }
+                }
+              }
+              metafields(identifiers: [
+                {namespace: "custom", key: "ml"},
+                {namespace: "custom", key: "volume"},
+                {namespace: "custom", key: "inhalt"},
+                {namespace: "custom", key: "flavor"},
+                {namespace: "custom", key: "nicotine_strength"}
+              ]) {
+                id
+                namespace
+                key
+                value
+                type
               }
               images(first: 1) {
                 edges {
