@@ -8,10 +8,41 @@ import Footer from '@/components/footer/Footer';
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = async (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    // TODO: Implement login logic
+    setIsLoading(true);
+    setError('');
+
+    try {
+      // Use Shopify Customer Account API via our API route
+      const response = await fetch('/api/shopify-customer/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.authUrl) {
+        // Redirect to Shopify Customer Account API OAuth
+        window.location.href = data.authUrl;
+      } else {
+        setError(data.error || 'Anmeldung fehlgeschlagen. Bitte versuchen Sie es erneut.');
+      }
+    } catch (err) {
+      console.error('Login error:', err);
+      setError('Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -19,8 +50,13 @@ export default function LoginPage() {
       <Header />
       <div className="container-custom py-12">
         <div className="max-w-md mx-auto">
-          <h1 className="text-4xl font-bold mb-8 text-center">Anmelden</h1>
-          <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md p-8">
+          <h1 className="text-4xl font-bold mb-8 text-center text-primary">Anmelden</h1>
+          <form onSubmit={handleLogin} className="bg-white rounded-lg shadow-md p-8">
+            {error && (
+              <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+                {error}
+              </div>
+            )}
             <div className="mb-6">
               <label className="block font-semibold mb-2">E-Mail-Adresse</label>
               <input
@@ -41,10 +77,14 @@ export default function LoginPage() {
                 className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-primary"
               />
             </div>
-            <button type="submit" className="btn-primary w-full py-4 text-lg mb-4">
-              Anmelden
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="btn-primary w-full py-4 text-lg mb-4 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading ? 'Wird angemeldet...' : 'Anmelden'}
             </button>
-            <div className="text-center">
+            <div className="text-center mb-6">
               <Link href="/passwort-vergessen" className="text-primary hover:underline">
                 Passwort vergessen?
               </Link>
@@ -62,4 +102,3 @@ export default function LoginPage() {
     </>
   );
 }
-

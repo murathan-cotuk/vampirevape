@@ -16,7 +16,7 @@
   }
   
   h2 {
-    @apply font-bold text-3xl;
+    @apply text-primary font-bold text-3xl;
   }
 }
 

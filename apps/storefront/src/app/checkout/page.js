@@ -25,6 +25,7 @@ export default function CheckoutPage() {
   const [cartItems, setCartItems] = useState([]);
   const [cartTotal, setCartTotal] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [promoCode, setPromoCode] = useState('');
   const [currentBonusPoints, setCurrentBonusPoints] = useState(100);
   const [bonusPointsToUse, setBonusPointsToUse] = useState(0);
@@ -55,6 +56,8 @@ export default function CheckoutPage() {
   useEffect(() => {
     const cart = getCart();
     const total = getCartTotal();
+    
+    setIsLoading(false);
     
     if (cart.length === 0) {
       router.push('/warenkorb');
@@ -111,12 +114,102 @@ export default function CheckoutPage() {
   const netSubtotal = subtotal / 1.19;
   const tax = subtotal - netSubtotal;
   
-  const shippingCost = 5.99;
+  const [shippingRates, setShippingRates] = useState([]);
+  const [selectedShippingRate, setSelectedShippingRate] = useState(null);
+  const [shippingCost, setShippingCost] = useState(5.99);
+  const [isLoadingShipping, setIsLoadingShipping] = useState(false);
+
+  // Calculate shipping cost based on selected rate or free shipping threshold
+  useEffect(() => {
+    if (selectedShippingRate) {
+      const cost = parseFloat(selectedShippingRate.price?.amount || 0);
+      setShippingCost(cost);
+    } else if (subtotal >= 50) {
+      // Free shipping for orders over 50 EUR
+      setShippingCost(0);
+    } else {
+      setShippingCost(5.99); // Default shipping cost
+    }
+  }, [selectedShippingRate, subtotal]);
+
+  // Fetch shipping rates when address is provided
+  const fetchShippingRates = async () => {
+    if (!formData.address || !formData.city || !formData.postalCode) {
+      return;
+    }
+
+    setIsLoadingShipping(true);
+    try {
+      const response = await fetch('/api/get-shipping-rates', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          cartItems,
+          shippingAddress: formData,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.shippingRates) {
+        setShippingRates(data.shippingRates);
+        // Auto-select first shipping rate
+        if (data.shippingRates.length > 0) {
+          setSelectedShippingRate(data.shippingRates[0]);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch shipping rates:', error);
+    } finally {
+      setIsLoadingShipping(false);
+    }
+  };
+
+  // Fetch shipping rates when address fields are filled
+  useEffect(() => {
+    if (formData.address && formData.city && formData.postalCode && cartItems.length > 0) {
+      const timeoutId = setTimeout(() => {
+        fetchShippingRates();
+      }, 500); // Debounce
+      return () => clearTimeout(timeoutId);
+    }
+  }, [formData.address, formData.city, formData.postalCode, formData.country]);
+
   const total = subtotal + shippingCost - bonusDiscount;
   const netTotal = netSubtotal + shippingCost;
 
+  if (isLoading) {
+    return (
+      <>
+        <Header />
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-gray-600">Lade...</p>
+          </div>
+        </div>
+        <Footer />
+      </>
+    );
+  }
+
   if (cartItems.length === 0) {
-    return null;
+    return (
+      <>
+        <Header />
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-gray-600 mb-4">Ihr Warenkorb ist leer.</p>
+            <Link href="/warenkorb" className="btn-primary inline-block">
+              Zum Warenkorb
+            </Link>
+          </div>
+        </div>
+        <Footer />
+      </>
+    );
   }
 
   return (
@@ -213,7 +306,7 @@ export default function CheckoutPage() {
               </div>
 
               {/* Billing Address */}
-              <div className="bg-[#fffbef] rounded-lg shadow-[0px_187px_75px_rgba(0,0,0,0.01),0px_105px_63px_rgba(0,0,0,0.05),0px_47px_47px_rgba(0,0,0,0.09),0px_12px_26px_rgba(0,0,0,0.1),0px_0px_0px_rgba(0,0,0,0.1)]">
+              <div className="bg-white rounded-lg">
                 <label className="w-full h-10 flex items-center px-5 border-b border-[rgba(16,86,82,0.75)] font-bold text-[11px] text-black">
                   RECHNUNGSADRESSE
                 </label>
@@ -297,7 +390,39 @@ export default function CheckoutPage() {
                       <p className="text-xs text-gray-600">Bitte überweise den Rechnungsbetrag auf das in der Bestellbestätigung angeg ...</p>
                     </div>
                   </label>
+
+                  <label className="flex items-start gap-3 p-3 border-2 border-gray-300 rounded-lg cursor-pointer hover:border-primary transition-colors">
+                    <input
+                      type="radio"
+                      name="payment"
+                      value="bogus"
+                      checked={formData.paymentMethod === 'bogus'}
+                      onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}
+                      className="mt-1"
+                    />
+                    <div className="flex-1">
+                      <div className="font-semibold text-sm">Bogus Gateway (Test)</div>
+                      <p className="text-xs text-gray-600">Test ödeme yöntemi. Kart numarası: 1 (Onaylanmış), 2 (Reddedilmiş), 3 (Hata)</p>
+                    </div>
+                  </label>
                 </div>
+                
+                {/* Test Payment Instructions */}
+                {formData.paymentMethod === 'bogus' && (
+                  <div className="px-5 pb-5">
+                    <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-4">
+                      <h4 className="font-semibold text-sm mb-2 text-yellow-800">Test Ödeme Bilgileri:</h4>
+                      <ul className="text-xs text-yellow-700 space-y-1">
+                        <li><strong>Kart Numarası:</strong> 1 (Onaylanmış), 2 (Reddedilmiş), 3 (Gateway Hatası)</li>
+                        <li><strong>CVV:</strong> Herhangi 3 rakam (örn: 123)</li>
+                        <li><strong>Son Kullanma Tarihi:</strong> Gelecekteki herhangi bir tarih (örn: 12/25)</li>
+                      </ul>
+                      <p className="text-xs text-yellow-600 mt-2 italic">
+                        Bu test ödeme yöntemi gerçek para çekmez. Sadece test amaçlıdır.
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Shipping Method */}
@@ -306,35 +431,89 @@ export default function CheckoutPage() {
                   VERSANDART
                 </label>
                 <div className="p-5 space-y-3">
-                  <label className="flex items-start gap-3 p-3 border-2 border-gray-300 rounded-lg cursor-pointer hover:border-primary transition-colors">
-                    <input
-                      type="radio"
-                      name="shipping"
-                      value="dhl"
-                      checked={formData.shippingMethod === 'dhl'}
-                      onChange={(e) => setFormData({ ...formData, shippingMethod: e.target.value })}
-                      className="mt-1"
-                    />
-                    <div className="flex-1">
-                      <div className="font-semibold text-sm">DHL Paket</div>
-                      <p className="text-xs text-gray-600">DHL Paketversand innerhalb Deutschlands. Kein Versand an Packstationen.</p>
+                  {isLoadingShipping ? (
+                    <div className="text-center py-4">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto mb-2"></div>
+                      <p className="text-xs text-gray-600">Versandkosten werden berechnet...</p>
                     </div>
-                  </label>
+                  ) : shippingRates.length > 0 ? (
+                    shippingRates.map((rate) => (
+                      <label
+                        key={rate.handle}
+                        className={`flex items-start gap-3 p-3 border-2 rounded-lg cursor-pointer hover:border-primary transition-colors ${
+                          selectedShippingRate?.handle === rate.handle
+                            ? 'border-primary bg-primary/5'
+                            : 'border-gray-300'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="shipping"
+                          value={rate.handle}
+                          checked={selectedShippingRate?.handle === rate.handle}
+                          onChange={() => setSelectedShippingRate(rate)}
+                          className="mt-1"
+                        />
+                        <div className="flex-1 flex justify-between items-start">
+                          <div>
+                            <div className="font-semibold text-sm">{rate.title}</div>
+                            {rate.handle === 'dhl' && (
+                              <p className="text-xs text-gray-600">DHL Paketversand innerhalb Deutschlands. Kein Versand an Packstationen.</p>
+                            )}
+                            {rate.handle === 'pickup' && (
+                              <p className="text-xs text-gray-600">Die Abholung erfolgt in unserem Lager in Neuss. Du bekommst eine Abholbenachrichtigung.</p>
+                            )}
+                          </div>
+                          <div className="font-bold text-sm ml-4">
+                            {parseFloat(rate.price?.amount || 0) === 0 ? 'Kostenlos' : formatPrice(rate.price?.amount, rate.price?.currencyCode)}
+                          </div>
+                        </div>
+                      </label>
+                    ))
+                  ) : (
+                    <>
+                      {/* Fallback if shipping rates not loaded yet */}
+                      <label className="flex items-start gap-3 p-3 border-2 border-gray-300 rounded-lg cursor-pointer hover:border-primary transition-colors">
+                        <input
+                          type="radio"
+                          name="shipping"
+                          value="dhl"
+                          checked={formData.shippingMethod === 'dhl'}
+                          onChange={(e) => setFormData({ ...formData, shippingMethod: e.target.value })}
+                          className="mt-1"
+                        />
+                        <div className="flex-1 flex justify-between items-start">
+                          <div>
+                            <div className="font-semibold text-sm">DHL Paket</div>
+                            <p className="text-xs text-gray-600">DHL Paketversand innerhalb Deutschlands. Kein Versand an Packstationen.</p>
+                          </div>
+                          <div className="font-bold text-sm ml-4">
+                            {subtotal >= 50 ? 'Kostenlos' : formatPrice(5.99)}
+                          </div>
+                        </div>
+                      </label>
 
-                  <label className="flex items-start gap-3 p-3 border-2 border-gray-300 rounded-lg cursor-pointer hover:border-primary transition-colors">
-                    <input
-                      type="radio"
-                      name="shipping"
-                      value="pickup"
-                      checked={formData.shippingMethod === 'pickup'}
-                      onChange={(e) => setFormData({ ...formData, shippingMethod: e.target.value })}
-                      className="mt-1"
-                    />
-                    <div className="flex-1">
-                      <div className="font-semibold text-sm">Selbstabholer</div>
-                      <p className="text-xs text-gray-600">Die Abholung erfolgt in unserem Lager in Neuss. Du bekommst eine Abholbenac ...</p>
-                    </div>
-                  </label>
+                      <label className="flex items-start gap-3 p-3 border-2 border-gray-300 rounded-lg cursor-pointer hover:border-primary transition-colors">
+                        <input
+                          type="radio"
+                          name="shipping"
+                          value="pickup"
+                          checked={formData.shippingMethod === 'pickup'}
+                          onChange={(e) => setFormData({ ...formData, shippingMethod: e.target.value })}
+                          className="mt-1"
+                        />
+                        <div className="flex-1">
+                          <div className="font-semibold text-sm">Selbstabholer</div>
+                          <p className="text-xs text-gray-600">Die Abholung erfolgt in unserem Lager in Neuss. Du bekommst eine Abholbenachrichtigung.</p>
+                        </div>
+                      </label>
+                    </>
+                  )}
+                  {subtotal >= 50 && shippingCost === 0 && (
+                    <p className="text-xs text-green-600 font-semibold mt-2">
+                      ✓ Gratis Versand ab 50€ Bestellwert
+                    </p>
+                  )}
                 </div>
               </div>
 

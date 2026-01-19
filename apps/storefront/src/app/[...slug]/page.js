@@ -39,6 +39,16 @@ export default async function CategoryPage({ params }) {
   const { slug } = params;
   const urlPath = '/' + (Array.isArray(slug) ? slug.join('/') : slug);
 
+  // Exclude special routes that should not be treated as category paths
+  // These routes have their own specific pages, so we should not handle them here
+  // Next.js route priority: static routes should come before catch-all routes
+  const excludedPaths = ['/checkout', '/warenkorb', '/konto', '/anmelden', '/registrieren', '/blog', '/lexikon', '/produkte', '/kategorien', '/suche', '/favoriten', '/kontakt'];
+  if (excludedPaths.includes(urlPath) || urlPath.startsWith('/checkout') || urlPath.startsWith('/warenkorb') || urlPath.startsWith('/konto') || urlPath.startsWith('/produkte') || urlPath.startsWith('/kategorien')) {
+    // These routes should be handled by their specific pages
+    // Don't render anything - let Next.js try static routes first
+    return null;
+  }
+
   let collection = null;
   try {
     // Get menu to build URL mapping

@@ -75,17 +75,18 @@ function renderMenuItems(items) {
         <li key={item.id}>
           <Link
             href={mapShopifyUrl(item.url)}
-            className="text-gray-400 hover:text-white transition-colors"
+            className="text-gray-100 hover:text-gray-300 transition-colors"
           >
             {item.title}
           </Link>
           {item.items && item.items.length > 0 && (
             <ul className="ml-4 mt-2 space-y-1">
               {item.items.map((subItem) => (
-                <li key={subItem.id}>
+                <li key={subItem.id} className="flex items-start">
+                  <span className="text-white mr-2">•</span>
                   <Link
                     href={mapShopifyUrl(subItem.url)}
-                    className="text-gray-500 hover:text-white transition-colors text-sm"
+                    className="text-white hover:text-gray-300 transition-colors text-sm"
                   >
                     {subItem.title}
                   </Link>
@@ -119,7 +120,7 @@ export default function Footer() {
   const menuItems = footerMenu?.items || [];
 
   return (
-    <footer className="bg-gray-900 text-white mt-20">
+    <footer className="bg-[#16191d] text-white mt-20">
       <div className="container-custom py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
           {/* Footer Menu from Shopify */}

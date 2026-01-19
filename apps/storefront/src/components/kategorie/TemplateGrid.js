@@ -57,29 +57,19 @@ function extractFilterOptions(products) {
       flavors.add(flavorMetafield.value);
     }
 
-    // Extract nicotine strength from metafields or variants
-    const nicotineMetafield = metafieldsArray.find(m => m && m.key === 'nicotine_strength');
+    // Extract nicotine strength from metafields or variant options
+    const nicotineMetafield = metafieldsArray.find(m => m && (m.key === 'nicotine_strength' || m.key === 'nicotine'));
     if (nicotineMetafield?.value) {
       nicotineStrengths.add(nicotineMetafield.value);
+    } else {
+      // Try to extract from variant options
+      product.variants?.edges?.forEach(({ node: variant }) => {
+        const nicotineOption = variant?.selectedOptions?.find(opt => opt && opt.name?.toLowerCase().includes('nikotin') || opt?.name?.toLowerCase().includes('nicotine'));
+        if (nicotineOption?.value) {
+          nicotineStrengths.add(nicotineOption.value);
+        }
+      });
     }
-
-    // Extract all custom metafields for dynamic filters
-    metafieldsArray.forEach(mf => {
-      if (mf && mf.namespace === 'custom' && mf.value) {
-        // Add to dynamic filter options based on key pattern
-        // This will be expanded based on your metafield definitions
-      }
-    });
-
-    // Also check variants for nicotine
-    product.variants?.edges?.forEach(({ node: variant }) => {
-      const nicotineOption = variant.selectedOptions?.find(opt => 
-        opt && (opt.name?.toLowerCase().includes('nicotin') || opt.name?.toLowerCase().includes('mg'))
-      );
-      if (nicotineOption?.value) {
-        nicotineStrengths.add(nicotineOption.value);
-      }
-    });
   });
 
   // Create price ranges
@@ -88,112 +78,120 @@ function extractFilterOptions(products) {
     const minPrice = Math.min(...prices);
     const maxPrice = Math.max(...prices);
     
-    if (maxPrice <= 20) priceRanges.push('0-20€');
-    if (maxPrice > 20 || minPrice < 20) priceRanges.push('20-50€');
-    if (maxPrice > 50 || minPrice < 50) priceRanges.push('50-100€');
-    if (maxPrice > 100) priceRanges.push('100€+');
+    if (maxPrice <= 20) {
+      priceRanges.push('0-20');
+    }
+    if (minPrice <= 30 && maxPrice >= 20) {
+      priceRanges.push('20-30');
+    }
+    if (minPrice <= 50 && maxPrice >= 30) {
+      priceRanges.push('30-50');
+    }
+    if (minPrice <= 100 && maxPrice >= 50) {
+      priceRanges.push('50-100');
+    }
+    if (minPrice >= 100) {
+      priceRanges.push('100+');
+    }
   }
 
   return {
     brands: Array.from(brands).sort(),
-    priceRanges: [...new Set(priceRanges)],
+    priceRanges: priceRanges.sort(),
     flavors: Array.from(flavors).sort(),
     nicotineStrengths: Array.from(nicotineStrengths).sort(),
   };
 }
 
-// Filter products based on selected filters
-function filterProducts(products, filters) {
-  if (!products) return [];
-
-  return products.filter((product) => {
-    // Price filter
-    if (filters.price) {
-      const minPrice = parseFloat(product.priceRange?.minVariantPrice?.amount || 0);
-      const [min, max] = filters.price.replace('€', '').replace('+', '').split('-').map(Number);
-      
-      if (filters.price.includes('+')) {
-        if (minPrice < 100) return false;
-      } else if (max) {
-        if (minPrice < min || minPrice > max) return false;
-      }
-    }
-
-    // Brand filter
-    if (filters.brand && product.vendor !== filters.brand) {
-      return false;
-    }
-
-    // Flavor filter
-    if (filters.flavor) {
-      const flavorMetafield = product.metafields?.find(m => m && m.key === 'flavor');
-      if (flavorMetafield?.value !== filters.flavor) {
-        return false;
-      }
-    }
-
-    // Nicotine filter
-    if (filters.nicotine) {
-      const nicotineMetafield = product.metafields?.find(m => m && m.key === 'nicotine_strength');
-      const hasNicotine = product.variants?.edges?.some(({ node: variant }) => {
-        const nicotineOption = variant.selectedOptions?.find(opt => 
-          opt && (opt.name?.toLowerCase().includes('nicotin') || opt.name?.toLowerCase().includes('mg'))
-        );
-        return nicotineOption?.value === filters.nicotine || nicotineMetafield?.value === filters.nicotine;
-      });
-      
-      if (!hasNicotine && nicotineMetafield?.value !== filters.nicotine) {
-        return false;
-      }
-    }
-
-    return true;
-  });
-}
-
 export default function CategoryTemplateGrid({ collection }) {
-  const allProducts = collection?.products?.edges?.map((e) => e.node) || [];
   const [filters, setFilters] = useState({
     price: null,
     brand: null,
     flavor: null,
     nicotine: null,
   });
-  const [sortBy, setSortBy] = useState('best-selling'); // Default: en çok satılan
+  const [sortBy, setSortBy] = useState('best-selling');
+
+  // Extract products from collection
+  const allProducts = collection?.products?.edges?.map((e) => e.node) || [];
 
   // Extract filter options from products
   const filterOptions = useMemo(() => extractFilterOptions(allProducts), [allProducts]);
 
   // Filter and sort products
   const filteredProducts = useMemo(() => {
-    let products = allProducts;
-    
+    let products = [...allProducts];
+
     // Apply filters
-    if (filters.price || filters.brand || filters.flavor || filters.nicotine) {
-      products = filterProducts(allProducts, filters);
+    if (filters.price) {
+      const [min, max] = filters.price.split('-').map(Number);
+      products = products.filter((product) => {
+        const price = parseFloat(product.priceRange?.minVariantPrice?.amount || 0);
+        if (filters.price === '100+') {
+          return price >= 100;
+        }
+        return price >= min && price <= max;
+      });
     }
-    
+
+    if (filters.brand) {
+      products = products.filter((product) => product.vendor === filters.brand);
+    }
+
+    if (filters.flavor) {
+      products = products.filter((product) => {
+        const metafieldsArray = product.metafields?.edges 
+          ? product.metafields.edges.map(e => e.node).filter(Boolean)
+          : (Array.isArray(product.metafields) ? product.metafields : []);
+        const flavorMetafield = metafieldsArray.find(m => m && m.key === 'flavor');
+        return flavorMetafield?.value === filters.flavor;
+      });
+    }
+
+    if (filters.nicotine) {
+      products = products.filter((product) => {
+        const metafieldsArray = product.metafields?.edges 
+          ? product.metafields.edges.map(e => e.node).filter(Boolean)
+          : (Array.isArray(product.metafields) ? product.metafields : []);
+        const nicotineMetafield = metafieldsArray.find(m => m && (m.key === 'nicotine_strength' || m.key === 'nicotine'));
+        if (nicotineMetafield?.value === filters.nicotine) {
+          return true;
+        }
+        // Also check variant options
+        return product.variants?.edges?.some(({ node: variant }) => {
+          const nicotineOption = variant?.selectedOptions?.find(opt => opt && (opt.name?.toLowerCase().includes('nikotin') || opt.name?.toLowerCase().includes('nicotine')));
+          return nicotineOption?.value === filters.nicotine;
+        });
+      });
+    }
+
     // Apply sorting
-    products = [...products].sort((a, b) => {
-      switch (sortBy) {
-        case 'name-asc':
-          return a.title.localeCompare(b.title, 'de');
-        case 'name-desc':
-          return b.title.localeCompare(a.title, 'de');
-        case 'price-asc':
+    switch (sortBy) {
+      case 'name-asc':
+        products.sort((a, b) => a.title.localeCompare(b.title));
+        break;
+      case 'name-desc':
+        products.sort((a, b) => b.title.localeCompare(a.title));
+        break;
+      case 'price-asc':
+        products.sort((a, b) => {
           const priceA = parseFloat(a.priceRange?.minVariantPrice?.amount || 0);
           const priceB = parseFloat(b.priceRange?.minVariantPrice?.amount || 0);
           return priceA - priceB;
-        case 'price-desc':
-          const priceA2 = parseFloat(a.priceRange?.minVariantPrice?.amount || 0);
-          const priceB2 = parseFloat(b.priceRange?.minVariantPrice?.amount || 0);
-          return priceB2 - priceA2;
-        case 'best-selling':
-        default:
-          // For now, keep original order (best-selling would need sales data)
-          return 0;
-      }
-    });
+        });
+        break;
+      case 'price-desc':
+        products.sort((a, b) => {
+          const priceA = parseFloat(a.priceRange?.minVariantPrice?.amount || 0);
+          const priceB = parseFloat(b.priceRange?.minVariantPrice?.amount || 0);
+          return priceB - priceA;
+        });
+        break;
+      case 'best-selling':
+      default:
+        // Keep original order (best-selling is default from Shopify)
+        break;
+    }
     
     return products;
   }, [allProducts, filters, sortBy]);
@@ -207,12 +205,13 @@ export default function CategoryTemplateGrid({ collection }) {
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="container-custom pt-1 pb-5">
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
-          {/* Filters Sidebar - 1/5 width */}
-          <aside className="lg:col-span-1 relative">
-            <div className="bg-white p-6 sticky top-24 border-r-2 border-gray-300 pr-6">
-              <h2 className="text-xl font-bold mb-6">Filter</h2>
+      {/* Container starts immediately under navbar - 1:4 Layout */}
+      <div className="container-custom">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-0">
+          {/* Left Section - 1/5 width: Fixed Filters - More to the left */}
+          <aside className="lg:col-span-1 bg-white border-r-2 border-gray-300 pl-4 pr-2">
+            <div className="sticky top-0 p-4 h-screen overflow-y-auto">
+              <h2 className="text-xl font-bold mb-6 text-primary">Filter</h2>
 
               {/* Price Filter */}
               {filterOptions.priceRanges.length > 0 && (
@@ -229,7 +228,7 @@ export default function CategoryTemplateGrid({ collection }) {
                           onChange={(e) => setFilters({ ...filters, price: e.target.value })}
                           className="mr-2 accent-primary"
                         />
-                        <span className="text-sm">{range}</span>
+                        <span className="text-sm">{range} €</span>
                       </label>
                     ))}
                   </div>
@@ -314,71 +313,73 @@ export default function CategoryTemplateGrid({ collection }) {
             </div>
           </aside>
 
-          {/* Right Section - 4/5 width: Banner, Products, Description */}
-          <div className="lg:col-span-4 space-y-2">
-            {/* Category Banner - Responsive, NO CROP, in right section */}
+          {/* Right Section - 4/5 width: Banner, Products, Description - More spacing from filter */}
+          <div className="lg:col-span-4 pl-6">
+            {/* Category Banner - 1920x300px, NO CROP, white background, full width to right */}
             {categoryBanner && (
-              <div className="w-full relative" style={{ height: '300px' }}>
+              <div className="w-full relative bg-white" style={{ height: '300px', marginLeft: '-1.5rem', marginRight: '-1.5rem', paddingRight: '1.5rem' }}>
                 <Image
                   src={categoryBanner}
                   alt={collection?.title || 'Kategorie Banner'}
                   fill
                   className="object-contain"
                   priority
-                  sizes="(max-width: 768px) 100vw, 80vw"
+                  sizes="(max-width: 1024px) 100vw, 80vw"
                   style={{ objectFit: 'contain' }}
                 />
               </div>
             )}
 
-            {/* Products Grid - 3 columns */}
-            {filteredProducts.length > 0 ? (
-              <>
-                <div className="flex items-center justify-between mb-4">
-                  <div className="text-sm text-gray-600">
-                    {filteredProducts.length} {filteredProducts.length === 1 ? 'Produkt' : 'Produkte'} gefunden
+            {/* Products Section */}
+            <div className="py-6">
+              {filteredProducts.length > 0 ? (
+                <>
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="text-sm text-gray-600">
+                      {filteredProducts.length} {filteredProducts.length === 1 ? 'Produkt' : 'Produkte'} gefunden
+                    </div>
+                    {/* Sort Dropdown */}
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm text-gray-700 font-semibold">Sortieren:</label>
+                      <select
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value)}
+                        className="px-3 py-1.5 text-sm border-2 border-gray-300 rounded-lg focus:outline-none focus:border-primary"
+                      >
+                        <option value="best-selling">Meistverkauft</option>
+                        <option value="name-asc">Name (A-Z)</option>
+                        <option value="name-desc">Name (Z-A)</option>
+                        <option value="price-asc">Preis (niedrig zu hoch)</option>
+                        <option value="price-desc">Preis (hoch zu niedrig)</option>
+                      </select>
+                    </div>
                   </div>
-                  {/* Sort Dropdown */}
-                  <div className="flex items-center gap-2">
-                    <label className="text-sm text-gray-700 font-semibold">Sortieren:</label>
-                    <select
-                      value={sortBy}
-                      onChange={(e) => setSortBy(e.target.value)}
-                      className="px-3 py-1.5 text-sm border-2 border-gray-300 rounded-lg focus:outline-none focus:border-primary"
-                    >
-                      <option value="best-selling">Meistverkauft</option>
-                      <option value="name-asc">Name (A-Z)</option>
-                      <option value="name-desc">Name (Z-A)</option>
-                      <option value="price-asc">Preis (niedrig zu hoch)</option>
-                      <option value="price-desc">Preis (hoch zu niedrig)</option>
-                    </select>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {filteredProducts.map((product) => (
+                      <ProductCard key={product.id} product={product} />
+                    ))}
                   </div>
+                </>
+              ) : (
+                <div className="bg-white p-8 rounded-lg">
+                  <p className="text-gray-600 text-center">
+                    {allProducts.length === 0 
+                      ? 'In dieser Kategorie sind noch keine Produkte verfügbar.'
+                      : 'Keine Produkte entsprechen den ausgewählten Filtern.'}
+                  </p>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filteredProducts.map((product) => (
-                    <ProductCard key={product.id} product={product} />
-                  ))}
-                </div>
-              </>
-            ) : (
-              <div className="bg-white p-8">
-                <p className="text-gray-600 text-center">
-                  {allProducts.length === 0 
-                    ? 'In dieser Kategorie sind noch keine Produkte verfügbar.'
-                    : 'Keine Produkte entsprechen den ausgewählten Filtern.'}
-                </p>
-              </div>
-            )}
+              )}
 
-            {/* Collection Description - Last Section */}
-            {(collection?.description || collection?.descriptionHtml) && (
-              <div className="bg-white p-8">
-                <div 
-                  className="prose prose-sm max-w-none text-gray-700"
-                  dangerouslySetInnerHTML={{ __html: collection.descriptionHtml || collection.description }}
-                />
-              </div>
-            )}
+              {/* Collection Description - Last Section */}
+              {(collection?.description || collection?.descriptionHtml) && (
+                <div className="mt-12 pt-8">
+                  <div 
+                    className="prose prose-sm max-w-none text-gray-700"
+                    dangerouslySetInnerHTML={{ __html: collection.descriptionHtml || collection.description }}
+                  />
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

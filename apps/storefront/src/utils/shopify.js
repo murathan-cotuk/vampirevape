@@ -180,7 +180,17 @@ export async function getProductByHandle(handle) {
           {namespace: "custom", key: "volume"},
           {namespace: "custom", key: "inhalt"},
           {namespace: "custom", key: "flavor"},
-          {namespace: "custom", key: "nicotine_strength"}
+          {namespace: "custom", key: "nicotine_strength"},
+          {namespace: "custom", key: "eigenschaften"},
+          {namespace: "custom", key: "hersteller"},
+          {namespace: "custom", key: "verantwortlich"},
+          {namespace: "custom", key: "informationsunterlagen"},
+          {namespace: "custom", key: "clp"},
+          {namespace: "custom", key: "reach"},
+          {namespace: "custom", key: "produktnummer"},
+          {namespace: "custom", key: "sku"},
+          {namespace: "custom", key: "weee"},
+          {namespace: "custom", key: "reg"}
         ]) {
           id
           namespace
