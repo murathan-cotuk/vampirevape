@@ -71,3 +71,6 @@ shopify.app.toml
 # Docker
 docker-compose.override.yml
 
+
+# Sentry Config File
+.env.sentry-build-plugin
