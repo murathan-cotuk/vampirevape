@@ -5,13 +5,35 @@ import { useState } from 'react';
 export default function NewsletterSignup() {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState(null);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // TODO: Integrate with Mailchimp API
-    setStatus('success');
-    setEmail('');
-    setTimeout(() => setStatus(null), 3000);
+    setStatus(null);
+    setError('');
+
+    try {
+      const response = await fetch('/api/mailchimp/subscribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Newsletter-Anmeldung fehlgeschlagen');
+      }
+
+      setStatus('success');
+      setEmail('');
+      setTimeout(() => setStatus(null), 5000);
+    } catch (err) {
+      setError(err.message || 'Ein Fehler ist aufgetreten.');
+      setTimeout(() => setError(''), 5000);
+    }
   };
 
   return (
@@ -34,6 +56,9 @@ export default function NewsletterSignup() {
       </div>
       {status === 'success' && (
         <p className="text-green-400 text-sm mt-2">Erfolgreich angemeldet!</p>
+      )}
+      {error && (
+        <p className="text-red-400 text-sm mt-2">{error}</p>
       )}
     </form>
   );
