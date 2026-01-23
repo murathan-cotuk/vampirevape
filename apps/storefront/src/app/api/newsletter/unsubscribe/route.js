@@ -43,12 +43,71 @@ export async function POST(request) {
     const searchData = await searchResponse.json();
     let customerId = null;
 
-    if (searchData.customers && searchData.customers.length > 0) {
-      customerId = searchData.customers[0].id;
-      console.log('Customer found, updating accepts_marketing to false:', customerId);
+    if (!searchData.customers || searchData.customers.length === 0) {
+      console.log('Customer not found for email:', email);
+      return NextResponse.json(
+        { error: 'Kunde mit dieser E-Mail-Adresse wurde nicht gefunden.' },
+        { status: 404 }
+      );
+    }
 
-      // Update using customerEmailMarketingConsentUpdate mutation
-      const now = new Date().toISOString();
+    customerId = searchData.customers[0].id;
+    console.log('Customer found, updating email marketing consent to NOT_SUBSCRIBED:', customerId);
+
+    // Get current customer consent to ensure consentUpdatedAt is not going backwards
+    // This prevents Shopify from silently rejecting the update
+    let currentConsentUpdatedAt = null;
+    try {
+      const customerQuery = `
+        query getCustomer($id: ID!) {
+          customer(id: $id) {
+            id
+            email
+            emailMarketingConsent {
+              marketingState
+              marketingOptInLevel
+              consentUpdatedAt
+            }
+          }
+        }
+      `;
+
+      const customerQueryResponse = await fetch(
+        `https://${shopifyStoreDomain}/admin/api/2024-10/graphql.json`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Shopify-Access-Token': adminApiToken,
+          },
+          body: JSON.stringify({
+            query: customerQuery,
+            variables: { id: `gid://shopify/Customer/${customerId}` },
+          }),
+        }
+      );
+
+      const customerQueryData = await customerQueryResponse.json();
+      if (customerQueryData.data?.customer?.emailMarketingConsent?.consentUpdatedAt) {
+        currentConsentUpdatedAt = customerQueryData.data.customer.emailMarketingConsent.consentUpdatedAt;
+        console.log('Current consentUpdatedAt:', currentConsentUpdatedAt);
+      }
+    } catch (queryError) {
+      console.warn('Could not fetch current consent, proceeding with new timestamp:', queryError.message);
+    }
+
+    // Ensure consentUpdatedAt is not going backwards
+    // If current timestamp exists and is newer, add 1 second to it
+    let now = new Date().toISOString();
+    if (currentConsentUpdatedAt) {
+      const currentTime = new Date(currentConsentUpdatedAt).getTime();
+      const newTime = new Date(now).getTime();
+      if (newTime <= currentTime) {
+        // Add 1 second to current timestamp to ensure it's always newer
+        now = new Date(currentTime + 1000).toISOString();
+        console.log('Adjusted consentUpdatedAt to be newer than current:', now);
+      }
+    }
       
       const consentMutation = `
         mutation customerEmailMarketingConsentUpdate($input: CustomerEmailMarketingConsentUpdateInput!) {
@@ -103,10 +162,13 @@ export async function POST(request) {
           status: consentResponse.status,
           errors: consentData.errors,
           userErrors: gqlUserErrors,
+          customerId,
+          email,
         });
         
         // Fallback to REST API with email_marketing_consent
         // Note: REST uses lowercase strings ("not_subscribed"), not GraphQL enums
+        console.log('Falling back to REST API for email_marketing_consent...');
         const updateResponse = await fetch(
           `https://${shopifyStoreDomain}/admin/api/2024-10/customers/${customerId}.json`,
           {
@@ -130,9 +192,22 @@ export async function POST(request) {
         
         if (!updateResponse.ok) {
           const fallbackData = await updateResponse.json();
-          console.error('REST API fallback also failed:', fallbackData);
+          console.error('REST API fallback also failed:', {
+            status: updateResponse.status,
+            data: fallbackData,
+            customerId,
+            email,
+          });
+          return NextResponse.json(
+            { error: 'Newsletter-Abmeldung fehlgeschlagen. Bitte versuchen Sie es später erneut.' },
+            { status: 500 }
+          );
         } else {
-          console.log('Email marketing consent updated via REST API fallback');
+          console.log('✅ Email marketing consent updated via REST API fallback', {
+            customerId,
+            email,
+            state: 'not_subscribed',
+          });
         }
       } else {
         const consent = consentData.data?.customerEmailMarketingConsentUpdate?.emailMarketingConsent;
@@ -140,9 +215,10 @@ export async function POST(request) {
           marketingState: consent?.marketingState,
           marketingOptInLevel: consent?.marketingOptInLevel,
           consentUpdatedAt: consent?.consentUpdatedAt,
+          customerId,
+          email,
         });
       }
-    }
 
     // Mailchimp will automatically sync from Shopify via Mailchimp app
     // No direct API calls needed - Shopify is the source of truth

@@ -47,9 +47,62 @@ export async function POST(request) {
     if (searchData.customers && searchData.customers.length > 0) {
       // Customer exists, update email marketing consent
       customerId = searchData.customers[0].id;
-      console.log('Customer exists, updating email marketing consent:', customerId);
+      console.log('Customer exists, updating email marketing consent to SUBSCRIBED:', customerId);
 
-      const now = new Date().toISOString();
+      // Get current customer consent to ensure consentUpdatedAt is not going backwards
+      // This prevents Shopify from silently rejecting the update
+      let currentConsentUpdatedAt = null;
+      try {
+        const customerQuery = `
+          query getCustomer($id: ID!) {
+            customer(id: $id) {
+              id
+              email
+              emailMarketingConsent {
+                marketingState
+                marketingOptInLevel
+                consentUpdatedAt
+              }
+            }
+          }
+        `;
+
+        const customerQueryResponse = await fetch(
+          `https://${shopifyStoreDomain}/admin/api/2024-10/graphql.json`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Shopify-Access-Token': adminApiToken,
+            },
+            body: JSON.stringify({
+              query: customerQuery,
+              variables: { id: `gid://shopify/Customer/${customerId}` },
+            }),
+          }
+        );
+
+        const customerQueryData = await customerQueryResponse.json();
+        if (customerQueryData.data?.customer?.emailMarketingConsent?.consentUpdatedAt) {
+          currentConsentUpdatedAt = customerQueryData.data.customer.emailMarketingConsent.consentUpdatedAt;
+          console.log('Current consentUpdatedAt:', currentConsentUpdatedAt);
+        }
+      } catch (queryError) {
+        console.warn('Could not fetch current consent, proceeding with new timestamp:', queryError.message);
+      }
+
+      // Ensure consentUpdatedAt is not going backwards
+      // If current timestamp exists and is newer, add 1 second to it
+      let now = new Date().toISOString();
+      if (currentConsentUpdatedAt) {
+        const currentTime = new Date(currentConsentUpdatedAt).getTime();
+        const newTime = new Date(now).getTime();
+        if (newTime <= currentTime) {
+          // Add 1 second to current timestamp to ensure it's always newer
+          now = new Date(currentTime + 1000).toISOString();
+          console.log('Adjusted consentUpdatedAt to be newer than current:', now);
+        }
+      }
       
       // Use customerEmailMarketingConsentUpdate mutation
       const consentMutation = `
@@ -105,6 +158,8 @@ export async function POST(request) {
           status: consentResponse.status,
           errors: consentData.errors,
           userErrors: gqlUserErrors,
+          customerId,
+          email,
         });
         
         // Fallback to REST API with email_marketing_consent
@@ -239,6 +294,8 @@ export async function POST(request) {
           status: consentResponse.status,
           errors: consentData.errors,
           userErrors: gqlUserErrors,
+          customerId,
+          email,
         });
         
         // Fallback to REST API with email_marketing_consent

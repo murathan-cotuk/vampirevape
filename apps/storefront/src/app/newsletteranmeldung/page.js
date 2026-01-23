@@ -44,6 +44,15 @@ export default function NewsletterAnmeldungPage() {
         ? { email, firstName, lastName }
         : { email };
 
+      // Debug: Log request details for unsubscribe
+      if (mode === 'unsubscribe') {
+        console.log('Unsubscribe request:', {
+          endpoint,
+          method: 'POST',
+          body,
+        });
+      }
+
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
@@ -52,7 +61,21 @@ export default function NewsletterAnmeldungPage() {
         body: JSON.stringify(body),
       });
 
+      // Debug: Log response details for unsubscribe
+      if (mode === 'unsubscribe') {
+        console.log('Unsubscribe response:', {
+          status: response.status,
+          ok: response.ok,
+          url: response.url,
+        });
+      }
+
       const data = await response.json();
+
+      // Debug: Log response data for unsubscribe
+      if (mode === 'unsubscribe') {
+        console.log('Unsubscribe response data:', data);
+      }
 
       if (!response.ok) {
         throw new Error(data.error || (mode === 'subscribe' ? 'Newsletter-Anmeldung fehlgeschlagen' : 'Newsletter-Abmeldung fehlgeschlagen'));
