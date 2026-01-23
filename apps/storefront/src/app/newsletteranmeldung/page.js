@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Header from '@/components/header/Header';
 import Footer from '@/components/footer/Footer';
 
-export default function NewsletterAnmeldungPage() {
+function NewsletterAnmeldungContent() {
   const searchParams = useSearchParams();
   const [mode, setMode] = useState('subscribe'); // 'subscribe' or 'unsubscribe'
   const [email, setEmail] = useState('');
@@ -250,5 +250,23 @@ export default function NewsletterAnmeldungPage() {
       </div>
       <Footer />
     </>
+  );
+}
+
+export default function NewsletterAnmeldungPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <div className="flex-grow container-custom py-12 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-gray-600">Laden...</p>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    }>
+      <NewsletterAnmeldungContent />
+    </Suspense>
   );
 }
