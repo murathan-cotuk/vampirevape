@@ -11,7 +11,8 @@ export default function AccountDropdown({ onClose }) {
     // Check if user is authenticated (check localStorage or cookie)
     const checkAuth = () => {
       const customerId = localStorage.getItem('shopify_customer_id');
-      setIsAuthenticated(!!customerId);
+      const customerToken = localStorage.getItem('shopify_customer_token');
+      setIsAuthenticated(!!customerId || !!customerToken);
     };
     
     checkAuth();
@@ -39,6 +40,7 @@ export default function AccountDropdown({ onClose }) {
   const handleLogout = () => {
     localStorage.removeItem('shopify_customer_id');
     localStorage.removeItem('shopify_customer_token');
+    localStorage.removeItem('shopify_customer_token_expires_at');
     setIsAuthenticated(false);
     window.dispatchEvent(new Event('authChange'));
     onClose();

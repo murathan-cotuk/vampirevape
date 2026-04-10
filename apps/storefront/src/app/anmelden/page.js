@@ -37,9 +37,17 @@ export default function LoginPage() {
         throw new Error(data.error || 'Anmeldung fehlgeschlagen');
       }
 
-      // Save customer ID to localStorage
-      if (data.customerId) {
-        localStorage.setItem('shopify_customer_id', data.customerId);
+      if (data.accessToken) {
+        localStorage.setItem('shopify_customer_token', data.accessToken);
+      }
+      if (data.expiresAt) {
+        localStorage.setItem('shopify_customer_token_expires_at', data.expiresAt);
+      }
+      if (data.accessToken || data.customerId) {
+        // Backward-compatible: keep customerId path if old API responds
+        if (data.customerId) {
+          localStorage.setItem('shopify_customer_id', data.customerId);
+        }
         window.dispatchEvent(new Event('authChange'));
       }
 

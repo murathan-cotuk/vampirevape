@@ -29,6 +29,7 @@ export default function RegisterPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
@@ -183,6 +184,7 @@ export default function RegisterPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
     setFieldErrors({});
 
     const isValid = validateForm();
@@ -205,16 +207,17 @@ export default function RegisterPage() {
       const data = await response.json();
 
       if (!response.ok) {
+        if (data?.field === 'email' || data?.code === 'CUSTOMER_ALREADY_EXISTS') {
+          setFieldErrors(prev => ({
+            ...prev,
+            email: data.message || 'Diese E-Mail-Adresse ist bereits registriert.',
+          }));
+        }
         throw new Error(data.error || 'Registrierung fehlgeschlagen');
       }
 
-      // Save customer ID to localStorage
-      if (data.customerId) {
-        localStorage.setItem('shopify_customer_id', data.customerId);
-        window.dispatchEvent(new Event('authChange'));
-      }
-
-      router.push('/konto');
+      setSuccess(data.message || 'Registrierung erfolgreich. Bitte überprüfen Sie Ihre E-Mail zur Bestätigung.');
+      setTimeout(() => router.push('/anmelden'), 1600);
     } catch (err) {
       console.error('Registration error:', err);
       setError(err.message || 'Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.');
@@ -234,6 +237,11 @@ export default function RegisterPage() {
               {error && (
                 <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded text-sm">
                   {error}
+                </div>
+              )}
+              {success && (
+                <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded text-sm">
+                  {success}
                 </div>
               )}
 

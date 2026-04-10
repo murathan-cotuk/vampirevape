@@ -86,10 +86,10 @@ export default function CheckoutPage() {
 
       const data = await response.json();
 
-      if (data.checkoutUrl) {
+      if (response.ok && data.checkoutUrl) {
         window.location.href = data.checkoutUrl;
       } else {
-        throw new Error('Checkout URL not received');
+        throw new Error(data.error || 'Checkout URL not received');
       }
     } catch (error) {
       console.error('Checkout error:', error);

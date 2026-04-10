@@ -78,6 +78,16 @@ function NewsletterAnmeldungContent() {
       }
 
       if (!response.ok) {
+        if (response.status === 404 && mode === 'unsubscribe') {
+          throw new Error('Diese E-Mail-Adresse wurde im System nicht gefunden.');
+        }
+        if (response.status >= 500) {
+          throw new Error(
+            mode === 'subscribe'
+              ? 'Newsletter-Anmeldung aktuell nicht verfuegbar. Bitte spaeter erneut versuchen.'
+              : 'Newsletter-Abmeldung aktuell nicht verfuegbar. Bitte spaeter erneut versuchen.'
+          );
+        }
         throw new Error(data.error || (mode === 'subscribe' ? 'Newsletter-Anmeldung fehlgeschlagen' : 'Newsletter-Abmeldung fehlgeschlagen'));
       }
 

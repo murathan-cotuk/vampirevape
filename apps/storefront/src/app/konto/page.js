@@ -12,23 +12,50 @@ export default function AccountPage() {
 
   useEffect(() => {
     const customerId = localStorage.getItem('shopify_customer_id');
-    
-    if (!customerId) {
+    const customerToken = localStorage.getItem('shopify_customer_token');
+    const tokenExpiresAt = localStorage.getItem('shopify_customer_token_expires_at');
+
+    if (customerToken && tokenExpiresAt && new Date(tokenExpiresAt).getTime() <= Date.now()) {
+      localStorage.removeItem('shopify_customer_token');
+      localStorage.removeItem('shopify_customer_token_expires_at');
+    }
+
+    const freshToken = localStorage.getItem('shopify_customer_token');
+    if (!freshToken && !customerId) {
       router.push('/anmelden');
       return;
     }
 
     setIsAuthenticated(true);
-    
-    // Fetch customer data
-    fetch(`/api/shopify/customer?id=${customerId}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.customer) {
-          setCustomer(data.customer);
+
+    const loadCustomer = async () => {
+      try {
+        if (freshToken) {
+          const tokenRes = await fetch(`/api/shopify/customer?token=${encodeURIComponent(freshToken)}`);
+          const tokenData = await tokenRes.json();
+          if (tokenRes.ok && tokenData.customer) {
+            setCustomer(tokenData.customer);
+            return;
+          }
         }
-      })
-      .catch(err => console.error('Error fetching customer:', err));
+
+        if (customerId) {
+          const idRes = await fetch(`/api/shopify/customer?id=${customerId}`);
+          const idData = await idRes.json();
+          if (idRes.ok && idData.customer) {
+            setCustomer(idData.customer);
+            return;
+          }
+        }
+
+        router.push('/anmelden');
+      } catch (err) {
+        console.error('Error fetching customer:', err);
+        router.push('/anmelden');
+      }
+    };
+
+    loadCustomer();
   }, [router]);
 
   if (!isAuthenticated) {
@@ -41,9 +68,15 @@ export default function AccountPage() {
       <div className="container-custom py-12">
         <h1 className="text-4xl font-bold mb-8">Mein Konto</h1>
         {customer && (
-          <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+          <div className="mb-6 p-4 bg-gray-50 rounded-lg space-y-2">
             <p className="text-gray-700">
               <span className="font-semibold">Willkommen,</span> {customer.first_name || customer.email}
+            </p>
+            <p className="text-gray-700">
+              <span className="font-semibold">Newsletter-Status:</span>{' '}
+              <span className={customer.newsletter_status === 'SUBSCRIBED' ? 'text-green-700' : 'text-gray-700'}>
+                {customer.newsletter_status || 'UNKNOWN'}
+              </span>
             </p>
           </div>
         )}

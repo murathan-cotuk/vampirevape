@@ -2,6 +2,12 @@ import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
+const jsonSuccess = (message, extra = {}, status = 200) =>
+  NextResponse.json({ success: true, error: null, message, ...extra }, { status });
+
+const jsonError = (message, status = 400, extra = {}) =>
+  NextResponse.json({ success: false, error: message, message, ...extra }, { status });
+
 /**
  * Register new customer with Shopify Admin API
  */
@@ -13,10 +19,7 @@ export async function POST(request) {
     const adminApiToken = process.env.SHOPIFY_ADMIN_API_TOKEN;
 
     if (!adminApiToken) {
-      return NextResponse.json(
-        { error: 'Server configuration error' },
-        { status: 500 }
-      );
+      return jsonError('Server configuration error', 500);
     }
 
     // Check if customer already exists
@@ -35,17 +38,14 @@ export async function POST(request) {
 
     const searchData = await searchResponse.json();
     if (searchData.customers && searchData.customers.length > 0) {
-      return NextResponse.json(
-        { error: 'Diese E-Mail-Adresse ist bereits registriert.' },
-        { status: 400 }
-      );
+      return jsonError('Diese E-Mail-Adresse ist bereits registriert.', 400, {
+        code: 'CUSTOMER_ALREADY_EXISTS',
+        field: 'email',
+      });
     }
 
     // Prepare customer data
-    // Debug: Check newsletter value
-    console.log('Newsletter value from form:', formData.newsletter, 'Type:', typeof formData.newsletter);
     const acceptsMarketing = formData.newsletter === true || formData.newsletter === 'true';
-    console.log('accepts_marketing will be set to:', acceptsMarketing);
     
     const customerData = {
       customer: {
@@ -117,38 +117,36 @@ export async function POST(request) {
 
     const createData = await createResponse.json();
     
-    console.log('Customer created. Full response:', JSON.stringify(createData, null, 2));
-    console.log('Customer created. Response accepts_marketing:', createData.customer?.accepts_marketing);
-
     if (createResponse.status !== 201) {
-      const errorMessage = createData.errors?.email?.[0] || 
+      const rawErrorMessage = createData.errors?.email?.[0] || 
                           createData.errors?.password?.[0] || 
                           createData.errors?.base?.[0] ||
                           'Registrierung fehlgeschlagen';
-      return NextResponse.json(
-        { error: errorMessage },
-        { status: createResponse.status }
-      );
+      const isDuplicateEmail = rawErrorMessage === 'has already been taken';
+      const errorMessage = isDuplicateEmail
+        ? 'Diese E-Mail-Adresse ist bereits registriert.'
+        : rawErrorMessage;
+      return jsonError(errorMessage, createResponse.status, isDuplicateEmail ? {
+        code: 'CUSTOMER_ALREADY_EXISTS',
+        field: 'email',
+      } : {});
     }
 
     const customerId = createData.customer.id;
-    console.log('Customer ID:', customerId);
-    console.log('Customer accepts_marketing after creation:', createData.customer?.accepts_marketing);
-
-    // Update customer's email marketing consent
-    // Use Admin GraphQL API customerEmailMarketingConsentUpdate mutation
-    // This ensures proper "subscribed" state in Shopify, which Mailchimp app will sync
     try {
-      const now = new Date().toISOString();
+      const consentUpdatedAt = new Date(Date.now() - 5000).toISOString();
       
       // Use customerEmailMarketingConsentUpdate mutation to set proper consent state
       const consentMutation = `
         mutation customerEmailMarketingConsentUpdate($input: CustomerEmailMarketingConsentUpdateInput!) {
           customerEmailMarketingConsentUpdate(input: $input) {
-            emailMarketingConsent {
-              marketingState
-              marketingOptInLevel
-              consentUpdatedAt
+            customer {
+              id
+              emailMarketingConsent {
+                marketingState
+                marketingOptInLevel
+                consentUpdatedAt
+              }
             }
             userErrors {
               field
@@ -162,12 +160,9 @@ export async function POST(request) {
         input: {
           customerId: `gid://shopify/Customer/${customerId}`,
           emailMarketingConsent: {
-            marketingState: acceptsMarketing ? "SUBSCRIBED" : "NOT_SUBSCRIBED",
-            // Note: SINGLE_OPT_IN is correct for checkbox-based consent
-            // If double opt-in is enabled in Shopify settings, state may show as "PENDING" until confirmed
-            // CONFIRMED_OPT_IN should only be used when user has actually confirmed via email
+            marketingState: acceptsMarketing ? "SUBSCRIBED" : "UNSUBSCRIBED",
             marketingOptInLevel: acceptsMarketing ? "SINGLE_OPT_IN" : "UNKNOWN",
-            consentUpdatedAt: now,
+            consentUpdatedAt,
           },
         },
       };
@@ -215,9 +210,8 @@ export async function POST(request) {
               customer: {
                 id: customerId,
                 email_marketing_consent: {
-                  state: acceptsMarketing ? "subscribed" : "not_subscribed",
+                  state: acceptsMarketing ? "subscribed" : "unsubscribed",
                   opt_in_level: acceptsMarketing ? "single_opt_in" : "unknown",
-                  consent_updated_at: now,
                 },
               },
             }),
@@ -231,11 +225,10 @@ export async function POST(request) {
           console.log('Email marketing consent updated via REST API fallback');
         }
       } else {
-        const consent = consentData.data?.customerEmailMarketingConsentUpdate?.emailMarketingConsent;
-        console.log('✅ Consent updated successfully', {
+        const consent = consentData.data?.customerEmailMarketingConsentUpdate?.customer?.emailMarketingConsent;
+        console.log('Consent updated successfully', {
           marketingState: consent?.marketingState,
           marketingOptInLevel: consent?.marketingOptInLevel,
-          consentUpdatedAt: consent?.consentUpdatedAt,
         });
       }
     } catch (updateError) {
@@ -247,16 +240,11 @@ export async function POST(request) {
     // When accepts_marketing is set to true, Mailchimp app will automatically add customer to Mailchimp
     // No direct API calls needed - Shopify is the source of truth
 
-    return NextResponse.json({
-      success: true,
+    return jsonSuccess('Registrierung erfolgreich. Bitte überprüfen Sie Ihre E-Mail zur Bestätigung.', {
       customerId: createData.customer.id.toString(),
-      message: 'Registrierung erfolgreich. Bitte überprüfen Sie Ihre E-Mail zur Bestätigung.',
     });
   } catch (error) {
     console.error('Registration error:', error);
-    return NextResponse.json(
-      { error: error.message || 'Ein Fehler ist aufgetreten.' },
-      { status: 500 }
-    );
+    return jsonError(error.message || 'Ein Fehler ist aufgetreten.', 500);
   }
 }

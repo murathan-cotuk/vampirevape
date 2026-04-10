@@ -2,36 +2,36 @@ import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
+const jsonSuccess = (message, extra = {}, status = 200) =>
+  NextResponse.json({ success: true, error: null, message, ...extra }, { status });
+
+const jsonError = (message, status = 400, extra = {}) =>
+  NextResponse.json({ success: false, error: message, message, ...extra }, { status });
+
 export async function POST(request) {
   try {
     const { cartItems, customerInfo } = await request.json();
 
     if (!cartItems || cartItems.length === 0) {
-      return NextResponse.json(
-        { error: 'Cart is empty' },
-        { status: 400 }
-      );
+      return jsonError('Cart is empty', 400);
     }
 
     const storeDomain = process.env.NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN;
     const storefrontToken = process.env.NEXT_PUBLIC_SHOPIFY_STOREFRONT_API_TOKEN;
 
     if (!storeDomain || !storefrontToken) {
-      return NextResponse.json(
-        { error: 'Shopify configuration missing' },
-        { status: 500 }
-      );
+      return jsonError('Shopify configuration missing', 500);
     }
 
-    // Create a checkout using Shopify Storefront API
+    // Use current Shopify cart flow (cartCreate) and redirect via checkoutUrl
     const mutation = `
-      mutation checkoutCreate($input: CheckoutCreateInput!) {
-        checkoutCreate(input: $input) {
-          checkout {
+      mutation cartCreate($input: CartInput!) {
+        cartCreate(input: $input) {
+          cart {
             id
-            webUrl
+            checkoutUrl
           }
-          checkoutUserErrors {
+          userErrors {
             field
             message
           }
@@ -39,36 +39,26 @@ export async function POST(request) {
       }
     `;
 
-    // Convert cart items to line items
-    // Ensure variantId is in correct format (GID format)
-    const lineItems = cartItems.map((item) => {
+    const lines = cartItems.map((item) => {
       let variantId = item.variantId;
-      // If variantId is not in GID format, convert it
       if (!variantId.startsWith('gid://')) {
-        // Extract ID from variantId if it's already a GID
         const idMatch = variantId.match(/\d+$/);
         if (idMatch) {
           variantId = `gid://shopify/ProductVariant/${idMatch[0]}`;
         }
       }
       return {
-        variantId,
+        merchandiseId: variantId,
         quantity: item.quantity,
       };
     });
 
     const variables = {
       input: {
-        lineItems,
-        email: customerInfo.email,
-        shippingAddress: {
-          firstName: customerInfo.firstName,
-          lastName: customerInfo.lastName,
-          address1: customerInfo.address,
-          city: customerInfo.city,
-          zip: customerInfo.postalCode,
-          country: customerInfo.country,
-          phone: customerInfo.phone,
+        lines,
+        buyerIdentity: {
+          email: customerInfo?.email || null,
+          countryCode: customerInfo?.country || 'DE',
         },
       },
     };
@@ -87,30 +77,25 @@ export async function POST(request) {
 
     const data = await response.json();
 
-    if (data.errors || data.data?.checkoutCreate?.checkoutUserErrors?.length > 0) {
-      console.error('Checkout creation error:', data.errors || data.data?.checkoutCreate?.checkoutUserErrors);
-      return NextResponse.json(
-        { error: 'Failed to create checkout' },
-        { status: 500 }
-      );
+    const gqlErrors = data?.errors || [];
+    const userErrors = data?.data?.cartCreate?.userErrors || [];
+    const firstError = gqlErrors[0]?.message || userErrors[0]?.message;
+    if (!response.ok || gqlErrors.length > 0 || userErrors.length > 0) {
+      console.error('Cart creation error:', { gqlErrors, userErrors });
+      return jsonError(firstError || 'Failed to create checkout cart', 500);
     }
 
-    const checkoutUrl = data.data?.checkoutCreate?.checkout?.webUrl;
+    const checkoutUrl = data?.data?.cartCreate?.cart?.checkoutUrl;
+    const cartId = data?.data?.cartCreate?.cart?.id;
 
     if (!checkoutUrl) {
-      return NextResponse.json(
-        { error: 'Checkout URL not received' },
-        { status: 500 }
-      );
+      return jsonError('Checkout URL not received', 500);
     }
 
-    return NextResponse.json({ checkoutUrl });
+    return jsonSuccess('Checkout created successfully.', { checkoutUrl, cartId });
   } catch (error) {
     console.error('Checkout API error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return jsonError('Internal server error', 500);
   }
 }
 

@@ -52,70 +52,18 @@ export async function POST(request) {
     }
 
     customerId = searchData.customers[0].id;
-    console.log('Customer found, updating email marketing consent to NOT_SUBSCRIBED:', customerId);
-
-    // Get current customer consent to ensure consentUpdatedAt is not going backwards
-    // This prevents Shopify from silently rejecting the update
-    let currentConsentUpdatedAt = null;
-    try {
-      const customerQuery = `
-        query getCustomer($id: ID!) {
-          customer(id: $id) {
-            id
-            email
-            emailMarketingConsent {
-              marketingState
-              marketingOptInLevel
-              consentUpdatedAt
-            }
-          }
-        }
-      `;
-
-      const customerQueryResponse = await fetch(
-        `https://${shopifyStoreDomain}/admin/api/2024-10/graphql.json`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Shopify-Access-Token': adminApiToken,
-          },
-          body: JSON.stringify({
-            query: customerQuery,
-            variables: { id: `gid://shopify/Customer/${customerId}` },
-          }),
-        }
-      );
-
-      const customerQueryData = await customerQueryResponse.json();
-      if (customerQueryData.data?.customer?.emailMarketingConsent?.consentUpdatedAt) {
-        currentConsentUpdatedAt = customerQueryData.data.customer.emailMarketingConsent.consentUpdatedAt;
-        console.log('Current consentUpdatedAt:', currentConsentUpdatedAt);
-      }
-    } catch (queryError) {
-      console.warn('Could not fetch current consent, proceeding with new timestamp:', queryError.message);
-    }
-
-    // Ensure consentUpdatedAt is not going backwards
-    // If current timestamp exists and is newer, add 1 second to it
-    let now = new Date().toISOString();
-    if (currentConsentUpdatedAt) {
-      const currentTime = new Date(currentConsentUpdatedAt).getTime();
-      const newTime = new Date(now).getTime();
-      if (newTime <= currentTime) {
-        // Add 1 second to current timestamp to ensure it's always newer
-        now = new Date(currentTime + 1000).toISOString();
-        console.log('Adjusted consentUpdatedAt to be newer than current:', now);
-      }
-    }
+    const consentUpdatedAt = new Date(Date.now() - 5000).toISOString();
       
       const consentMutation = `
         mutation customerEmailMarketingConsentUpdate($input: CustomerEmailMarketingConsentUpdateInput!) {
           customerEmailMarketingConsentUpdate(input: $input) {
-            emailMarketingConsent {
-              marketingState
-              marketingOptInLevel
-              consentUpdatedAt
+            customer {
+              id
+              emailMarketingConsent {
+                marketingState
+                marketingOptInLevel
+                consentUpdatedAt
+              }
             }
             userErrors {
               field
@@ -129,9 +77,9 @@ export async function POST(request) {
         input: {
           customerId: `gid://shopify/Customer/${customerId}`,
           emailMarketingConsent: {
-            marketingState: "NOT_SUBSCRIBED",
+            marketingState: "UNSUBSCRIBED",
             marketingOptInLevel: "UNKNOWN",
-            consentUpdatedAt: now,
+            consentUpdatedAt,
           },
         },
       };
@@ -181,9 +129,8 @@ export async function POST(request) {
               customer: {
                 id: customerId,
                 email_marketing_consent: {
-                  state: "not_subscribed",
+                  state: "unsubscribed",
                   opt_in_level: "unknown",
-                  consent_updated_at: now,
                 },
               },
             }),
@@ -203,18 +150,17 @@ export async function POST(request) {
             { status: 500 }
           );
         } else {
-          console.log('✅ Email marketing consent updated via REST API fallback', {
+          console.log('Email marketing consent updated via REST API fallback', {
             customerId,
             email,
-            state: 'not_subscribed',
+            state: 'unsubscribed',
           });
         }
       } else {
-        const consent = consentData.data?.customerEmailMarketingConsentUpdate?.emailMarketingConsent;
-        console.log('✅ Consent updated successfully', {
+        const consent = consentData.data?.customerEmailMarketingConsentUpdate?.customer?.emailMarketingConsent;
+        console.log('Consent updated successfully', {
           marketingState: consent?.marketingState,
           marketingOptInLevel: consent?.marketingOptInLevel,
-          consentUpdatedAt: consent?.consentUpdatedAt,
           customerId,
           email,
         });

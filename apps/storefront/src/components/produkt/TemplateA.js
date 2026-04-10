@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
+import { addToCart } from '@/utils/cart';
 
 function formatPrice(amount, currencyCode) {
   try {
@@ -26,6 +27,18 @@ export default function ProductTemplateA({ product }) {
   const images = product?.images?.edges?.map((e) => e.node) || [];
   const variants = product?.variants?.edges?.map((e) => e.node) || [];
   const price = selectedVariant?.price || product?.priceRange?.minVariantPrice;
+
+  const handleAddToCart = () => {
+    if (!selectedVariant?.availableForSale) return;
+    addToCart(selectedVariant.id, quantity, {
+      title: product.title,
+      variantTitle: selectedVariant.title,
+      image: images[0]?.url || '',
+      price: selectedVariant.price || price,
+    });
+    window.dispatchEvent(new Event('cartUpdated'));
+    window.dispatchEvent(new CustomEvent('openCartSidebar'));
+  };
 
   return (
     <div className="container-custom py-12">
@@ -134,6 +147,7 @@ export default function ProductTemplateA({ product }) {
 
           {/* Add to Cart */}
           <button
+            onClick={handleAddToCart}
             disabled={!selectedVariant?.availableForSale}
             className="btn-primary w-full py-4 text-lg mb-4 disabled:opacity-50 disabled:cursor-not-allowed"
           >
