@@ -225,177 +225,87 @@ export default function Navbar({ isMenuOpen, setIsMenuOpen, menu }) {
 
           {/* Desktop Menu */}
           {menuItems.length > 0 ? (
-            <ul className="hidden lg:flex items-center gap-0 justify-center w-full">
+            <ul className="hidden lg:flex items-center justify-center w-full relative">
               {menuItems.map((item) => (
                 <li
                   key={item.id}
-                  className="relative group"
+                  className=""
                   onMouseEnter={() => {
-                    if (item.items && item.items.length > 0) {
-                      setActiveDropdown(item.id);
-                    }
-                  }}
-                  onMouseLeave={() => {
-                    // Don't close immediately - let megamenu handle it
+                    if (item.items && item.items.length > 0) setActiveDropdown(item.id);
                   }}
                 >
                   <Link
                     href={mapShopifyUrl(item.url, item, menu)}
-                    className={`inline-block px-3 py-4 font-bold text-base relative transition-all duration-200 ${
+                    className={`inline-flex items-center px-4 py-4 font-semibold text-[15px] tracking-wide border-b-2 transition-colors duration-200 ${
                       isActive(item.url, item)
-                        ? 'text-[#ffd300] text-[1.2em]'
-                        : 'group-hover:text-[#ffd300] group-hover:scale-110'
+                        ? 'text-[#ffd300] border-[#ffd300]'
+                        : 'text-white border-transparent hover:text-[#ffd300] hover:border-[#ffd300]'
                     }`}
                   >
                     {item.title}
-                    <span className={`absolute bottom-3 left-3 right-3 h-0.5 bg-[#ffd300] transition-all duration-200 ${
-                      isActive(item.url, item) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                    }`}></span>
                   </Link>
+
                   <AnimatePresence>
                     {item.items && item.items.length > 0 && activeDropdown === item.id && (
                       <motion.div
-                        initial={{ opacity: 0, height: 0, y: -10 }}
-                        animate={{ opacity: 1, height: 'auto', y: 0 }}
-                        exit={{ opacity: 0, height: 0, y: -10 }}
-                        transition={{ 
-                          duration: 0.5,
-                          ease: [0.16, 1, 0.3, 1] // Smooth, liquid-like easing
-                        }}
-                        className="absolute top-full left-0 w-screen overflow-hidden"
-                        style={{ 
-                          left: 0,
-                          right: 0,
-                          marginLeft: 'calc(-50vw + 50%)',
-                          zIndex: 1000
-                        }}
+                        initial={{ opacity: 0, y: -8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8 }}
+                        transition={{ duration: 0.22, ease: 'easeOut' }}
+                        className="absolute top-full left-0 right-0 z-[1000] w-full"
                         onMouseEnter={() => setActiveDropdown(item.id)}
                         onMouseLeave={() => setActiveDropdown(null)}
                       >
-                        {/* Backdrop - Solid white background with strong shadow */}
-                        <div 
-                          className="absolute inset-0 bg-white border-t-4 border-primary" 
-                          style={{ 
-                            boxShadow: '0 20px 60px -10px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0, 0, 0, 0.1)'
-                          }}
-                        />
-                        
-                        {/* Content Container - Same width as navbar */}
-                        <div className="relative py-8 px-12 container-custom mx-auto">
-                          {/* Top decorative gradient */}
-                          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-[#ffd300] to-primary" />
-                          
-                          {/* Main Content Grid - Responsive columns based on item count */}
-                          <motion.div 
-                            initial={{ opacity: 0, y: -10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.15, duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-                            className={`grid gap-x-16 gap-y-8 ${
-                              item.items.length === 1 ? 'grid-cols-1' :
-                              item.items.length === 2 ? 'grid-cols-2' :
-                              item.items.length === 3 ? 'grid-cols-3' :
-                              item.items.length === 4 ? 'grid-cols-4' :
-                              'grid-cols-5'
-                            }`}
-                          >
-                            {item.items.map((subItem, subIndex) => (
-                              <motion.div
-                                key={subItem.id}
-                                initial={{ opacity: 0, y: 15 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ 
-                                  delay: 0.2 + subIndex * 0.05,
-                                  duration: 0.4,
-                                  ease: [0.16, 1, 0.3, 1]
-                                }}
-                                className="space-y-4 group/sub"
+                        <div className="rounded-b-2xl border border-gray-200 bg-white shadow-[0_18px_50px_rgba(0,0,0,0.18)] overflow-hidden">
+                          <div className="h-1 w-full bg-gradient-to-r from-primary via-[#ffd300] to-primary" />
+
+                          <div className="px-8 py-7">
+                            <div className="mb-5 flex items-center justify-between">
+                              <span className="text-xs font-bold uppercase tracking-[0.18em] text-gray-500">
+                                {item.title}
+                              </span>
+                              <Link
+                                href={mapShopifyUrl(item.url, item, menu)}
+                                className="text-sm font-semibold text-primary hover:text-[#ffd300] transition-colors"
                               >
-                                {/* Main Category Link */}
-                                <Link
-                                  href={mapShopifyUrl(subItem.url, subItem, menu)}
-                                  className="block relative group/link"
-                                >
-                                  <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-gray-300 group-hover/link:border-primary transition-colors">
-                                    <span className="font-bold text-lg text-gray-800 group-hover/link:text-primary transition-colors duration-200">
-                                      {subItem.title}
-                                    </span>
-                                    <motion.svg
-                                      initial={{ opacity: 0, x: -5 }}
-                                      whileHover={{ opacity: 1, x: 0 }}
-                                      className="w-4 h-4 text-primary opacity-0 group-hover/link:opacity-100 transition-opacity"
-                                      fill="none"
-                                      stroke="currentColor"
-                                      viewBox="0 0 24 24"
-                                    >
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
-                                    </motion.svg>
-                                  </div>
-                                </Link>
-                                
-                                {/* Subcategories */}
-                                {subItem.items && subItem.items.length > 0 && (
-                                  <ul className="space-y-2">
-                                    {subItem.items.map((subSubItem, subSubIndex) => (
-                                      <motion.li
-                                        key={subSubItem.id}
-                                        initial={{ opacity: 0, x: -10 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        transition={{ 
-                                          delay: 0.25 + subIndex * 0.05 + subSubIndex * 0.03,
-                                          duration: 0.35,
-                                          ease: [0.16, 1, 0.3, 1]
-                                        }}
-                                      >
-                                        <Link
-                                          href={mapShopifyUrl(subSubItem.url, subSubItem, menu)}
-                                          className="group/item relative flex items-center gap-2 py-2.5 px-3 -mx-3 rounded-lg transition-all duration-200 hover:bg-gradient-to-r hover:from-primary/8 hover:to-[#ffd300]/8 hover:shadow-sm"
-                                        >
-                                          <motion.div
-                                            className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-0 bg-gradient-to-b from-primary to-[#ffd300] rounded-r-full opacity-0 group-hover/item:opacity-100 group-hover/item:h-5 transition-all duration-200"
-                                          />
-                                          <span className="text-sm font-medium text-gray-800 group-hover/item:text-primary group-hover/item:font-bold transition-all duration-200 relative z-10">
-                                            {subSubItem.title}
-                                          </span>
-                                          <motion.div
-                                            initial={{ scale: 0, opacity: 0 }}
-                                            whileHover={{ scale: 1, opacity: 1 }}
-                                            className="w-1.5 h-1.5 rounded-full bg-[#ffd300] opacity-0 group-hover/item:opacity-100 transition-opacity"
-                                          />
-                                        </Link>
-                                        
-                                        {/* Third level items */}
-                                        {subSubItem.items && subSubItem.items.length > 0 && (
-                                          <motion.ul
-                                            initial={{ opacity: 0, height: 0 }}
-                                            whileHover={{ opacity: 1, height: 'auto' }}
-                                            className="ml-6 mt-2 space-y-1.5 border-l-2 border-gray-100 pl-4"
+                                Alle ansehen
+                              </Link>
+                            </div>
+
+                            <div className={`grid gap-x-8 gap-y-6 ${
+                              item.items.length <= 2
+                                ? 'grid-cols-2'
+                                : item.items.length === 3
+                                  ? 'grid-cols-3'
+                                  : 'grid-cols-4'
+                            }`}>
+                              {item.items.map((subItem) => (
+                                <div key={subItem.id} className="min-w-0">
+                                  <Link
+                                    href={mapShopifyUrl(subItem.url, subItem, menu)}
+                                    className="mb-3 block border-b border-gray-200 pb-2 text-[15px] font-bold text-gray-900 hover:text-primary transition-colors"
+                                  >
+                                    {subItem.title}
+                                  </Link>
+
+                                  {subItem.items && subItem.items.length > 0 && (
+                                    <ul className="space-y-1.5">
+                                      {subItem.items.slice(0, 8).map((subSubItem) => (
+                                        <li key={subSubItem.id}>
+                                          <Link
+                                            href={mapShopifyUrl(subSubItem.url, subSubItem, menu)}
+                                            className="block rounded-md px-2 py-1.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary transition-colors"
                                           >
-                                            {subSubItem.items.map((subSubSubItem) => (
-                                              <motion.li
-                                                key={subSubSubItem.id}
-                                                whileHover={{ x: 4 }}
-                                                transition={{ duration: 0.15 }}
-                                              >
-                                                <Link
-                                                  href={mapShopifyUrl(subSubSubItem.url, subSubSubItem, menu)}
-                                                  className="block text-xs text-gray-600 hover:text-primary hover:font-semibold transition-all duration-200 py-1.5 px-2 rounded hover:bg-gray-100"
-                                                >
-                                                  {subSubSubItem.title}
-                                                </Link>
-                                              </motion.li>
-                                            ))}
-                                          </motion.ul>
-                                        )}
-                                      </motion.li>
-                                    ))}
-                                  </ul>
-                                )}
-                              </motion.div>
-                            ))}
-                          </motion.div>
-                          
-                          {/* Bottom decorative element */}
-                          <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
+                                            {subSubItem.title}
+                                          </Link>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
                         </div>
                       </motion.div>
                     )}

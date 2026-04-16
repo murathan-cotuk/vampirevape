@@ -425,6 +425,13 @@ export async function getStoreMetafields(namespace = 'hero', keys = []) {
           key
           value
           type
+          reference {
+            ... on MediaImage {
+              image {
+                url
+              }
+            }
+          }
         }
       }
     }
@@ -450,19 +457,101 @@ export async function getStoreMetafields(namespace = 'hero', keys = []) {
  */
 export async function getHeroSlides() {
   try {
-    const metafields = await getStoreMetafields('hero', ['slider_slides']);
-    const slidesMetafield = metafields.find(m => m.key === 'slider_slides');
-    
-    if (!slidesMetafield || !slidesMetafield.value) {
-      return [];
+    // 1) Legacy method (JSON string): hero.slider_slides
+    const legacyMetafields = await getStoreMetafields('hero', ['slider_slides']);
+    const legacy = legacyMetafields.find((m) => m && m.key === 'slider_slides');
+
+    if (legacy && legacy.value) {
+      try {
+        const slides = JSON.parse(legacy.value);
+        if (Array.isArray(slides) && slides.length) return slides;
+      } catch {
+        // ignore, fallback to new slot fields
+      }
     }
 
-    // Parse JSON string to array
-    const slides = JSON.parse(slidesMetafield.value);
-    return Array.isArray(slides) ? slides : [];
+    // 2) New user-friendly method (fixed slots):
+    // hero.slider_slide_1_image, hero.slider_slide_1_link, hero.slider_slide_1_title, hero.slider_slide_1_alt
+    const slotCount = 5;
+    const keys = [];
+    for (let i = 1; i <= slotCount; i++) {
+      keys.push(`slider_slide_${i}_image`, `slider_slide_${i}_link`, `slider_slide_${i}_title`, `slider_slide_${i}_alt`);
+    }
+
+    const metafields = await getStoreMetafields('hero', keys);
+    const byKey = new Map((metafields || []).map((m) => [m.key, m]));
+
+    const extractImageUrl = (mf) => {
+      if (!mf) return null;
+      // Media image reference
+      if (mf.reference?.image?.url) return mf.reference.image.url;
+      // Fallback: sometimes URL is stored directly as value
+      if (typeof mf.value === 'string' && mf.value.trim()) return mf.value;
+      return null;
+    };
+
+    const getValue = (key) => {
+      const mf = byKey.get(key);
+      if (!mf || mf.value == null) return null;
+      return typeof mf.value === 'string' ? mf.value : String(mf.value);
+    };
+
+    const slides = [];
+    for (let i = 1; i <= slotCount; i++) {
+      const imgMf = byKey.get(`slider_slide_${i}_image`);
+      const image = extractImageUrl(imgMf);
+      if (!image) continue;
+
+      const link = getValue(`slider_slide_${i}_link`) || '#';
+      const title = getValue(`slider_slide_${i}_title`) || '';
+      const alt = getValue(`slider_slide_${i}_alt`) || title || `Hero slide ${i}`;
+
+      slides.push({
+        id: i,
+        image,
+        link,
+        title,
+        alt,
+      });
+    }
+
+    return slides;
   } catch (error) {
     console.error('Failed to parse hero slides:', error);
     return [];
+  }
+}
+
+/**
+ * Get home banners from Shopify store metafields.
+ * Metafield expected:
+ * - namespace: "banner"
+ * - keys: "double_small", "double_large"
+ * - value: JSON string of an array:
+ *   [{ "id": 1, "image": "https://...", "title": "Neue Liquids", "link": "/e-liquids/neu" }, ...]
+ */
+export async function getHomeBanners() {
+  try {
+    const metafields = await getStoreMetafields('banner', ['double_small', 'double_large']);
+
+    const parse = (key) => {
+      const mf = metafields.find((m) => m && m.key === key);
+      if (!mf || !mf.value) return [];
+      try {
+        const parsed = JSON.parse(mf.value);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    };
+
+    return {
+      double_small: parse('double_small'),
+      double_large: parse('double_large'),
+    };
+  } catch (error) {
+    console.error('Failed to fetch home banners:', error);
+    return { double_small: [], double_large: [] };
   }
 }
 
