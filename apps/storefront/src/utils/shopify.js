@@ -431,6 +431,9 @@ export async function getStoreMetafields(namespace = 'hero', keys = []) {
                 url
               }
             }
+            ... on GenericFile {
+              url
+            }
           }
         }
       }
@@ -457,6 +460,62 @@ export async function getStoreMetafields(namespace = 'hero', keys = []) {
  */
 export async function getHeroSlides() {
   try {
+    // 0) Preferred method: hero_slide metaobjects (CMS panel source)
+    const metaobjectQuery = `
+      query getHeroSlideMetaobjects {
+        metaobjects(type: "hero_slide", first: 100) {
+          edges {
+            node {
+              id
+              fields {
+                key
+                value
+                reference {
+                  ... on MediaImage {
+                    image {
+                      url
+                    }
+                  }
+                  ... on GenericFile {
+                    url
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    `;
+    const metaobjectData = await shopifyFetch({ query: metaobjectQuery });
+    const heroNodes = metaobjectData?.metaobjects?.edges?.map((e) => e?.node).filter(Boolean) || [];
+    if (heroNodes.length > 0) {
+      const heroSlides = heroNodes
+        .map((node, idx) => {
+          const map = new Map((node.fields || []).map((f) => [f.key, f]));
+          const imageField = map.get('image') || map.get('slide_image');
+          const image =
+            imageField?.reference?.image?.url ||
+            imageField?.reference?.url ||
+            imageField?.value ||
+            '';
+          if (!image) return null;
+          const active = (map.get('active')?.value || 'true').toLowerCase() !== 'false';
+          if (!active) return null;
+          return {
+            id: node.id,
+            image,
+            link: map.get('link')?.value || '#',
+            title: map.get('title')?.value || '',
+            alt: map.get('alt')?.value || map.get('title')?.value || `Hero slide ${idx + 1}`,
+            sortOrder: Number(map.get('sort_order')?.value || idx + 1),
+          };
+        })
+        .filter(Boolean)
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+        .map(({ sortOrder, ...rest }) => rest);
+      if (heroSlides.length > 0) return heroSlides;
+    }
+
     // 1) Legacy method (JSON string): hero.slider_slides
     const legacyMetafields = await getStoreMetafields('hero', ['slider_slides']);
     const legacy = legacyMetafields.find((m) => m && m.key === 'slider_slides');
@@ -471,20 +530,44 @@ export async function getHeroSlides() {
     }
 
     // 2) New user-friendly method (fixed slots):
-    // hero.slider_slide_1_image, hero.slider_slide_1_link, hero.slider_slide_1_title, hero.slider_slide_1_alt
+    // Supports both:
+    // - hero.slider_slide_1_image
+    // - custom.hero_slider_slide_1_image (Shopify auto-transformed key style)
     const slotCount = 5;
     const keys = [];
     for (let i = 1; i <= slotCount; i++) {
-      keys.push(`slider_slide_${i}_image`, `slider_slide_${i}_link`, `slider_slide_${i}_title`, `slider_slide_${i}_alt`);
+      keys.push(
+        `slider_slide_${i}_image`,
+        `slider_slide_${i}_link`,
+        `slider_slide_${i}_title`,
+        `slider_slide_${i}_alt`,
+        `hero_slider_slide_${i}_image`,
+        `hero_slider_slide_${i}_link`,
+        `hero_slider_slide_${i}_title`,
+        `hero_slider_slide_${i}_alt`
+      );
     }
 
-    const metafields = await getStoreMetafields('hero', keys);
-    const byKey = new Map((metafields || []).map((m) => [m.key, m]));
+    const [heroMetafields, customMetafields] = await Promise.all([
+      getStoreMetafields('hero', keys),
+      getStoreMetafields('custom', keys),
+    ]);
+    const metafields = [...(heroMetafields || []), ...(customMetafields || [])].filter(Boolean);
+    const byKey = new Map();
+    // Prefer "hero" namespace if duplicate key exists
+    metafields.forEach((m) => {
+      if (!m?.key) return;
+      if (!byKey.has(m.key) || m.namespace === 'hero') {
+        byKey.set(m.key, m);
+      }
+    });
 
     const extractImageUrl = (mf) => {
       if (!mf) return null;
       // Media image reference
       if (mf.reference?.image?.url) return mf.reference.image.url;
+      // Generic file reference
+      if (mf.reference?.url) return mf.reference.url;
       // Fallback: sometimes URL is stored directly as value
       if (typeof mf.value === 'string' && mf.value.trim()) return mf.value;
       return null;
@@ -498,13 +581,25 @@ export async function getHeroSlides() {
 
     const slides = [];
     for (let i = 1; i <= slotCount; i++) {
-      const imgMf = byKey.get(`slider_slide_${i}_image`);
+      const imgMf =
+        byKey.get(`slider_slide_${i}_image`) ||
+        byKey.get(`hero_slider_slide_${i}_image`);
       const image = extractImageUrl(imgMf);
       if (!image) continue;
 
-      const link = getValue(`slider_slide_${i}_link`) || '#';
-      const title = getValue(`slider_slide_${i}_title`) || '';
-      const alt = getValue(`slider_slide_${i}_alt`) || title || `Hero slide ${i}`;
+      const link =
+        getValue(`slider_slide_${i}_link`) ||
+        getValue(`hero_slider_slide_${i}_link`) ||
+        '#';
+      const title =
+        getValue(`slider_slide_${i}_title`) ||
+        getValue(`hero_slider_slide_${i}_title`) ||
+        '';
+      const alt =
+        getValue(`slider_slide_${i}_alt`) ||
+        getValue(`hero_slider_slide_${i}_alt`) ||
+        title ||
+        `Hero slide ${i}`;
 
       slides.push({
         id: i,
@@ -532,6 +627,96 @@ export async function getHeroSlides() {
  */
 export async function getHomeBanners() {
   try {
+    // Preferred method: Metaobjects (type: banner) - no JSON editing needed.
+    // Suggested fields on banner metaobject:
+    // - image (File/Media image reference)
+    // - link (URL or single-line text)
+    // - title (single-line text, optional)
+    // - placement (single-line text: "double_small" | "double_large")
+    // - active (boolean, optional)
+    // - sort_order (number, optional)
+    const metaobjectQuery = `
+      query getBannerMetaobjects {
+        metaobjects(type: "banner", first: 100) {
+          edges {
+            node {
+              id
+              handle
+              fields {
+                key
+                value
+                reference {
+                  ... on MediaImage {
+                    image {
+                      url
+                    }
+                  }
+                  ... on GenericFile {
+                    url
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    `;
+
+    const metaobjectData = await shopifyFetch({ query: metaobjectQuery });
+    const bannerNodes = metaobjectData?.metaobjects?.edges?.map((e) => e?.node).filter(Boolean) || [];
+
+    const fromMetaobjects = bannerNodes
+      .map((node, index) => {
+        const fieldMap = new Map((node.fields || []).map((f) => [f.key, f]));
+        const imageField =
+          fieldMap.get('image') ||
+          fieldMap.get('banner_image') ||
+          fieldMap.get('image_desktop');
+        const placementField =
+          fieldMap.get('placement') ||
+          fieldMap.get('slot') ||
+          fieldMap.get('variant') ||
+          fieldMap.get('section');
+
+        const linkField = fieldMap.get('link') || fieldMap.get('url') || fieldMap.get('href');
+        const titleField = fieldMap.get('title') || fieldMap.get('headline') || fieldMap.get('name');
+        const activeField = fieldMap.get('active') || fieldMap.get('enabled');
+        const sortField = fieldMap.get('sort_order') || fieldMap.get('order') || fieldMap.get('position');
+
+        const image =
+          imageField?.reference?.image?.url ||
+          imageField?.reference?.url ||
+          imageField?.value ||
+          null;
+        if (!image) return null;
+
+        const placement = (placementField?.value || 'double_small').toLowerCase().trim();
+        const activeValue = (activeField?.value || 'true').toLowerCase().trim();
+        const active = !['false', '0', 'no', 'off', 'pasif'].includes(activeValue);
+        const sortOrder = Number(sortField?.value || index + 1);
+
+        return {
+          id: node.id || `${placement}-${index + 1}`,
+          image,
+          link: linkField?.value || '#',
+          title: titleField?.value || '',
+          placement,
+          active,
+          sortOrder: Number.isFinite(sortOrder) ? sortOrder : index + 1,
+        };
+      })
+      .filter(Boolean)
+      .filter((item) => item.active)
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+
+    if (fromMetaobjects.length > 0) {
+      return {
+        double_small: fromMetaobjects.filter((b) => b.placement === 'double_small'),
+        double_large: fromMetaobjects.filter((b) => b.placement === 'double_large'),
+      };
+    }
+
+    // Fallback method: Store metafield JSON (legacy)
     const metafields = await getStoreMetafields('banner', ['double_small', 'double_large']);
 
     const parse = (key) => {

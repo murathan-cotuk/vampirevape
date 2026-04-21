@@ -39,7 +39,7 @@ export default function HeroSlider({ slides = [] }) {
   if (!slides || slides.length === 0) {
     // Temporary: Show placeholder for testing
     return (
-      <div className="relative h-[500px] md:h-[600px] lg:h-[700px] overflow-hidden bg-gradient-to-r from-primary to-primary-dark flex items-center justify-center">
+      <div className="relative w-full aspect-[35/10] min-h-[180px] overflow-hidden bg-gradient-to-r from-primary to-primary-dark flex items-center justify-center">
         <p className="text-white text-xl">Hero Slider</p>
       </div>
     );
@@ -49,7 +49,7 @@ export default function HeroSlider({ slides = [] }) {
 
   return (
     <div 
-      className="relative h-[500px] md:h-[600px] lg:h-[700px] overflow-hidden"
+      className="relative w-full aspect-[35/10] min-h-[180px] overflow-hidden"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
